@@ -331,3 +331,59 @@ func TestCode128WriterWithForceCodeSet(t *testing.T) {
 		}
 	}
 }
+
+func TestCode128Writer_GS1Format(t *testing.T) {
+	enc := code128Encoder{}
+
+	hints := map[gozxing.EncodeHintType]interface{}{
+		gozxing.EncodeHintType_GS1_FORMAT: true,
+	}
+	content := "0104912345123459"
+	r, e := enc.encodeWithHints(content, hints)
+	if e != nil {
+		t.Fatalf("encodeWithHints with GS1_FORMAT=true returns error: %v", e)
+	}
+
+	expectedWithFNC1, e := enc.encode(string(code128ESCAPE_FNC_1) + content)
+	if e != nil {
+		t.Fatalf("encode with manual FNC1 returns error: %v", e)
+	}
+	if !reflect.DeepEqual(r, expectedWithFNC1) {
+		t.Fatalf("encodeWithHints with GS1_FORMAT=true = %v, expect %v (same as manual FNC1)", r, expectedWithFNC1)
+	}
+
+	hints = map[gozxing.EncodeHintType]interface{}{
+		gozxing.EncodeHintType_GS1_FORMAT: "true",
+	}
+	r, e = enc.encodeWithHints(content, hints)
+	if e != nil {
+		t.Fatalf("encodeWithHints with GS1_FORMAT=\"true\" returns error: %v", e)
+	}
+	if !reflect.DeepEqual(r, expectedWithFNC1) {
+		t.Fatalf("encodeWithHints with GS1_FORMAT=\"true\" = %v, expect %v (same as manual FNC1)", r, expectedWithFNC1)
+	}
+
+	hints = map[gozxing.EncodeHintType]interface{}{
+		gozxing.EncodeHintType_GS1_FORMAT: false,
+	}
+	r, e = enc.encodeWithHints(content, hints)
+	if e != nil {
+		t.Fatalf("encodeWithHints with GS1_FORMAT=false returns error: %v", e)
+	}
+	
+	expectedWithoutFNC1, e := enc.encode(content)
+	if e != nil {
+		t.Fatalf("encode without FNC1 returns error: %v", e)
+	}
+	if !reflect.DeepEqual(r, expectedWithoutFNC1) {
+		t.Fatalf("encodeWithHints with GS1_FORMAT=false = %v, expect %v (same as without FNC1)", r, expectedWithoutFNC1)
+	}
+
+	r, e = enc.encodeWithHints(content, nil)
+	if e != nil {
+		t.Fatalf("encodeWithHints without GS1_FORMAT hint returns error: %v", e)
+	}
+	if !reflect.DeepEqual(r, expectedWithoutFNC1) {
+		t.Fatalf("encodeWithHints without GS1_FORMAT hint = %v, expect %v (same as without FNC1)", r, expectedWithoutFNC1)
+	}
+}

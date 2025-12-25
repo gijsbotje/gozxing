@@ -1,6 +1,8 @@
 package oned
 
 import (
+	"strconv"
+
 	"github.com/makiuchi-d/gozxing"
 )
 
@@ -53,6 +55,24 @@ func (e code128Encoder) encode(contents string) ([]bool, error) {
 }
 
 func (code128Encoder) encodeWithHints(contentsStr string, hints map[gozxing.EncodeHintType]interface{}) ([]bool, error) {
+	// Check for GS1 format hint and prepend FNC1 if needed
+	gs1Format := false
+	if hints != nil {
+		if gs1FormatHint, ok := hints[gozxing.EncodeHintType_GS1_FORMAT]; ok {
+			switch v := gs1FormatHint.(type) {
+			case bool:
+				gs1Format = v
+			case string:
+				gs1Format, _ = strconv.ParseBool(v)
+			}
+		}
+	}
+
+	// Prepend FNC1 character for GS1 format
+	if gs1Format {
+		contentsStr = string(code128ESCAPE_FNC_1) + contentsStr
+	}
+
 	contents := []rune(contentsStr)
 	length := len(contents)
 	// Check length
@@ -63,20 +83,22 @@ func (code128Encoder) encodeWithHints(contentsStr string, hints map[gozxing.Enco
 
 	// Check for forced code set hint.
 	forcedCodeSet := -1
-	if codeSetHint, ok := hints[gozxing.EncodeHintType_FORCE_CODE_SET]; ok {
-		switch s := codeSetHint.(string); s {
-		case "A":
-			forcedCodeSet = code128CODE_CODE_A
-			break
-		case "B":
-			forcedCodeSet = code128CODE_CODE_B
-			break
-		case "C":
-			forcedCodeSet = code128CODE_CODE_C
-			break
-		default:
-			return nil, gozxing.NewWriterException(
-				"IllegalArgumentException: Unsupported code set hint: %v", codeSetHint)
+	if hints != nil {
+		if codeSetHint, ok := hints[gozxing.EncodeHintType_FORCE_CODE_SET]; ok {
+			switch s := codeSetHint.(string); s {
+			case "A":
+				forcedCodeSet = code128CODE_CODE_A
+				break
+			case "B":
+				forcedCodeSet = code128CODE_CODE_B
+				break
+			case "C":
+				forcedCodeSet = code128CODE_CODE_C
+				break
+			default:
+				return nil, gozxing.NewWriterException(
+					"IllegalArgumentException: Unsupported code set hint: %v", codeSetHint)
+			}
 		}
 	}
 

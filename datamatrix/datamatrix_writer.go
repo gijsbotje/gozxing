@@ -58,7 +58,7 @@ func (this *DataMatrixWriter) Encode(contents string, format gozxing.BarcodeForm
 	}
 
 	//1. step: Data encodation
-	encoded, e := encoder.EncodeHighLevel(contents, shape, minSize, maxSize)
+	encoded, e := encoder.EncodeHighLevel(contents, shape, minSize, maxSize, hints)
 	if e != nil {
 		return nil, e
 	}
