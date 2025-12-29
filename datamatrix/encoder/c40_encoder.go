@@ -20,6 +20,43 @@ func (this *C40Encoder) getEncodingMode() int {
 	return this.encodingMode
 }
 
+func (this *C40Encoder) encodeMaximal(context *EncoderContext) error {
+	buffer := make([]byte, 0)
+	lastCharSize := 0
+	backtrackStartPosition := context.pos
+	backtrackBufferLength := 0
+	for context.HasMoreCharacters() {
+		c := context.GetCurrentChar()
+		context.pos++
+		lastCharSize, buffer = this.encodeChar(c, buffer)
+		if len(buffer)%3 == 0 {
+			backtrackStartPosition = context.pos
+			backtrackBufferLength = len(buffer)
+		}
+	}
+	if backtrackBufferLength != len(buffer) {
+		unwritten := (len(buffer) / 3) * 2
+
+		curCodewordCount := context.GetCodewordCount() + unwritten + 1 // +1 for the latch to C40
+		e := context.UpdateSymbolInfoByLength(curCodewordCount)
+		if e != nil {
+			return gozxing.WrapWriterException(e)
+		}
+		available := context.GetSymbolInfo().GetDataCapacity() - curCodewordCount
+		rest := len(buffer) % 3
+		if (rest == 2 && available != 2) ||
+			(rest == 1 && (lastCharSize > 3 || available != 1)) {
+			buffer = buffer[:backtrackBufferLength]
+			context.pos = backtrackStartPosition
+		}
+	}
+	if len(buffer) > 0 {
+		context.WriteCodeword(HighLevelEncoder_LATCH_TO_C40)
+	}
+
+	return c40HandleEOD(context, buffer)
+}
+
 func (this *C40Encoder) encode(context *EncoderContext) error {
 	//step C
 	buffer := make([]byte, 0)
@@ -53,7 +90,7 @@ func (this *C40Encoder) encode(context *EncoderContext) error {
 
 		count := len(buffer)
 		if (count % 3) == 0 {
-			newMode := HighLevelEncoder_lookAheadTest(context.GetMessage(), context.pos, this.getEncodingMode())
+			newMode := HighLevelEncoder{}.LookAheadTest(context.GetMessage(), context.pos, this.getEncodingMode())
 			if newMode != this.getEncodingMode() {
 				// Return to ASCII encodation, which will actually handle latch to new mode
 				context.SignalEncoderChange(HighLevelEncoder_ASCII_ENCODATION)

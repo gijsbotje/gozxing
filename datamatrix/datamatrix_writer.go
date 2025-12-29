@@ -100,9 +100,20 @@ func (this *DataMatrixWriter) Encode(contents string, format gozxing.BarcodeForm
 		if hasGS1FormatHint {
 			fnc1 = 0x1D // GS1 FNC1 character
 		}
-		encoded, e = encoder.EncodeHighLevelMinimalWithOptions(contents, priorityCharset, fnc1, shape)
+		encoded, e = encoder.MinimalEncoder{}.EncodeHighLevel(contents, priorityCharset, fnc1, shape)
 	} else {
-		encoded, e = encoder.EncodeHighLevel(contents, shape, minSize, maxSize)
+		hasForceC40Hint := false
+		if hints != nil {
+			if forceC40Hint, ok := hints[gozxing.EncodeHintType_FORCE_C40]; ok {
+				switch v := forceC40Hint.(type) {
+				case bool:
+					hasForceC40Hint = v
+				case string:
+					hasForceC40Hint = v == "true"
+				}
+			}
+		}
+		encoded, e = encoder.HighLevelEncoder{}.EncodeHighLevel(contents, shape, minSize, maxSize, hasForceC40Hint)
 	}
 	if e != nil {
 		return nil, e

@@ -49,15 +49,10 @@ func isInTextShift2Set(ch rune, fnc1 int) bool {
 	return isInC40Shift2Set(ch, fnc1)
 }
 
-// EncodeHighLevel Performs message encoding of a DataMatrix message
-//
-// @param msg the message
-// @return the encoded message (the char values range from 0 to 255)
-func EncodeHighLevelMinimal(msg string) ([]byte, error) {
-	return EncodeHighLevelMinimalWithOptions(msg, nil, -1, SymbolShapeHint_FORCE_NONE)
-}
+// MinimalEncoder Encoder that encodes minimally
+type MinimalEncoder struct{}
 
-// EncodeHighLevelMinimalWithOptions Performs message encoding of a DataMatrix message
+// EncodeHighLevel Performs message encoding of a DataMatrix message
 //
 // @param msg the message
 // @param priorityCharset The preferred encoding.Encoding. When the value of the argument is nil, the algorithm
@@ -72,7 +67,7 @@ func EncodeHighLevelMinimal(msg string) ([]byte, error) {
 //
 // @param shape requested shape.
 // @return the encoded message (the char values range from 0 to 255)
-func EncodeHighLevelMinimalWithOptions(msg string, priorityCharset encoding.Encoding, fnc1 int, shape SymbolShapeHint) ([]byte, error) {
+func (m MinimalEncoder) EncodeHighLevel(msg string, priorityCharset encoding.Encoding, fnc1 int, shape SymbolShapeHint) ([]byte, error) {
 	macroId := 0
 	if strings.HasPrefix(msg, HighLevelEncoder_MACRO_05_HEADER) && strings.HasSuffix(msg, HighLevelEncoder_MACRO_TRAILER) {
 		macroId = 5

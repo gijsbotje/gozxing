@@ -174,11 +174,12 @@ func TestMinimalEncoder_isNativeEDIFACT(t *testing.T) {
 // Main encoding test - matching HighLevelEncoder structure
 
 func TestEncodeHighLevelMinimal(t *testing.T) {
+	encoder := MinimalEncoder{}
 	// Test error cases (similar to HighLevelEncoder)
 	// Note: MinimalEncoder doesn't have the same error checking as HighLevelEncoder
 	// but we can test with very long strings
 	str := string(make([]byte, 1559))
-	_, e := EncodeHighLevelMinimal(str)
+	_, e := encoder.EncodeHighLevel(str, nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e == nil {
 		// MinimalEncoder might handle this differently, so we just check it doesn't panic
 		// This is a soft check - if it encodes, that's fine
@@ -186,148 +187,155 @@ func TestEncodeHighLevelMinimal(t *testing.T) {
 
 	// Test macro 05 - should match HighLevelEncoder output
 	str = "[)>\u001E05\u001Daaaaaa\u001E\u0004"
-	b, e := EncodeHighLevelMinimal(str)
+	b, e := encoder.EncodeHighLevel(str, nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	// HighLevelEncoder produces: []byte{236, 239, 89, 191, 89, 191, 254, 129}
 	// MinimalEncoder should start with macro 05 codeword (236)
 	if b[0] != 236 {
-		t.Fatalf("EncodeHighLevelMinimal macro 05 first byte = %v, expect 236", b[0])
+		t.Fatalf("EncodeHighLevel macro 05 first byte = %v, expect 236", b[0])
 	}
 
 	// Test macro 06 - should match HighLevelEncoder output
 	str = "[)>\u001E06\u001Daaaaaa\u001E\u0004"
-	b, e = EncodeHighLevelMinimal(str)
+	b, e = encoder.EncodeHighLevel(str, nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	// HighLevelEncoder produces: []byte{237, 239, 89, 191, 89, 191, 254, 129}
 	// MinimalEncoder should start with macro 06 codeword (237)
 	if b[0] != 237 {
-		t.Fatalf("EncodeHighLevelMinimal macro 06 first byte = %v, expect 237", b[0])
+		t.Fatalf("EncodeHighLevel macro 06 first byte = %v, expect 237", b[0])
 	}
 
 	// Test basic encoding
-	b, e = EncodeHighLevelMinimal("123456")
+	b, e = encoder.EncodeHighLevel("123456", nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimal returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 
 	// Test with extended ASCII
-	b, e = EncodeHighLevelMinimal("123456£")
+	b, e = encoder.EncodeHighLevel("123456£", nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimal returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 }
 
 func TestEncodeHighLevelMinimalWithOptions(t *testing.T) {
 	shape := SymbolShapeHint_FORCE_NONE
+	encoder := MinimalEncoder{}
 
 	// Test with GS1 format (fnc1 = 0x1D)
-	b, e := EncodeHighLevelMinimalWithOptions("010123456789012810ABCD1234", nil, 0x1D, shape)
+	b, e := encoder.EncodeHighLevel("010123456789012810ABCD1234", nil, 0x1D, shape)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 	// Should start with FNC1 codeword (232)
 	if b[0] != 232 {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions GS1 first byte = %v, expect 232", b[0])
+		t.Fatalf("EncodeHighLevel GS1 first byte = %v, expect 232", b[0])
 	}
 
 	// Test with priority charset
 	utf8, _ := ianaindex.IANA.Encoding("UTF-8")
-	b, e = EncodeHighLevelMinimalWithOptions("Hello World", utf8, -1, shape)
+	b, e = encoder.EncodeHighLevel("Hello World", utf8, -1, shape)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 
 	// Test without GS1 (fnc1 = -1)
-	b, e = EncodeHighLevelMinimalWithOptions("Hello World", nil, -1, shape)
+	b, e = encoder.EncodeHighLevel("Hello World", nil, -1, shape)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 	// Should not start with FNC1
 	if b[0] == 232 {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions should not start with FNC1 when fnc1=-1")
+		t.Fatalf("EncodeHighLevel should not start with FNC1 when fnc1=-1")
 	}
 }
 
 // Encoding mode tests
 
 func TestMinimalEncoderASCIIEncodation(t *testing.T) {
-	b, e := EncodeHighLevelMinimal("123456")
+	encoder := MinimalEncoder{}
+	b, e := encoder.EncodeHighLevel("123456", nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	// Should encode digits efficiently
 	if len(b) < 3 {
-		t.Fatalf("EncodeHighLevelMinimal(123456) size too small: %d", len(b))
+		t.Fatalf("EncodeHighLevel(123456) size too small: %d", len(b))
 	}
 }
 
 func TestMinimalEncoderC40Encodation(t *testing.T) {
-	b, e := EncodeHighLevelMinimal("AIMAIMAIM")
+	encoder := MinimalEncoder{}
+	b, e := encoder.EncodeHighLevel("AIMAIMAIM", nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimal returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 }
 
 func TestMinimalEncoderTextEncodation(t *testing.T) {
-	b, e := EncodeHighLevelMinimal("aimaimaim")
+	encoder := MinimalEncoder{}
+	b, e := encoder.EncodeHighLevel("aimaimaim", nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimal returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 }
 
 func TestMinimalEncoderX12Encodation(t *testing.T) {
-	b, e := EncodeHighLevelMinimal("ABC>ABC123>AB")
+	encoder := MinimalEncoder{}
+	b, e := encoder.EncodeHighLevel("ABC>ABC123>AB", nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimal returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 }
 
 func TestMinimalEncoderEDIFACTEncodation(t *testing.T) {
-	b, e := EncodeHighLevelMinimal(".A.C1.3.DATA.123DATA.123DATA")
+	encoder := MinimalEncoder{}
+	b, e := encoder.EncodeHighLevel(".A.C1.3.DATA.123DATA.123DATA", nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimal returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 }
 
 func TestMinimalEncoderBase256Encodation(t *testing.T) {
+	encoder := MinimalEncoder{}
 	// Test with extended ASCII characters
-	b, e := EncodeHighLevelMinimal("\u00ABäöüé\u00BB")
+	b, e := encoder.EncodeHighLevel("\u00ABäöüé\u00BB", nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimal returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 }
 
@@ -335,13 +343,14 @@ func TestMinimalEncoderBase256Encodation(t *testing.T) {
 
 func TestMinimalEncoderGS1Format(t *testing.T) {
 	shape := SymbolShapeHint_FORCE_NONE
+	encoder := MinimalEncoder{}
 	// Test GS1 format with FNC1 character
-	b, e := EncodeHighLevelMinimalWithOptions("010123456789012810ABCD1234", nil, 0x1D, shape)
+	b, e := encoder.EncodeHighLevel("010123456789012810ABCD1234", nil, 0x1D, shape)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 	// Should start with FNC1 (232)
 	if b[0] != 232 {
@@ -351,36 +360,38 @@ func TestMinimalEncoderGS1Format(t *testing.T) {
 
 func TestMinimalEncoderECI(t *testing.T) {
 	shape := SymbolShapeHint_FORCE_NONE
+	encoder := MinimalEncoder{}
 	// Test with UTF-8 priority charset
 	utf8, _ := ianaindex.IANA.Encoding("UTF-8")
-	b, e := EncodeHighLevelMinimalWithOptions("Hello World", utf8, -1, shape)
+	b, e := encoder.EncodeHighLevel("Hello World", utf8, -1, shape)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns empty")
+		t.Fatalf("EncodeHighLevel returns empty")
 	}
 }
 
 func TestMinimalEncoderShapeHints(t *testing.T) {
 	msg := "ABCDEFG"
+	encoder := MinimalEncoder{}
 
 	// Test FORCE_NONE
-	b1, e1 := EncodeHighLevelMinimalWithOptions(msg, nil, -1, SymbolShapeHint_FORCE_NONE)
+	b1, e1 := encoder.EncodeHighLevel(msg, nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e1 != nil {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns error: %v", e1)
+		t.Fatalf("EncodeHighLevel returns error: %v", e1)
 	}
 
 	// Test FORCE_SQUARE
-	b2, e2 := EncodeHighLevelMinimalWithOptions(msg, nil, -1, SymbolShapeHint_FORCE_SQUARE)
+	b2, e2 := encoder.EncodeHighLevel(msg, nil, -1, SymbolShapeHint_FORCE_SQUARE)
 	if e2 != nil {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns error: %v", e2)
+		t.Fatalf("EncodeHighLevel returns error: %v", e2)
 	}
 
 	// Test FORCE_RECTANGLE
-	b3, e3 := EncodeHighLevelMinimalWithOptions(msg, nil, -1, SymbolShapeHint_FORCE_RECTANGLE)
+	b3, e3 := encoder.EncodeHighLevel(msg, nil, -1, SymbolShapeHint_FORCE_RECTANGLE)
 	if e3 != nil {
-		t.Fatalf("EncodeHighLevelMinimalWithOptions returns error: %v", e3)
+		t.Fatalf("EncodeHighLevel returns error: %v", e3)
 	}
 
 	// All should produce valid encodings
@@ -404,12 +415,14 @@ func TestMinimalEncoderComparison(t *testing.T) {
 		".A.C1.3.DATA",
 	}
 
+	minimalEncoder := MinimalEncoder{}
+	highLevelEncoder := HighLevelEncoder{}
 	for _, msg := range testMessages {
-		minimal, e1 := EncodeHighLevelMinimal(msg)
-		highLevel, e2 := EncodeHighLevel(msg, shape, nil, nil)
+		minimal, e1 := minimalEncoder.EncodeHighLevel(msg, nil, -1, shape)
+		highLevel, e2 := highLevelEncoder.EncodeHighLevel(msg, shape, nil, nil, false)
 
 		if e1 != nil {
-			t.Errorf("EncodeHighLevelMinimal(%q) returns error: %v", msg, e1)
+			t.Errorf("EncodeHighLevel(%q) returns error: %v", msg, e1)
 			continue
 		}
 		if e2 != nil {
@@ -450,12 +463,14 @@ func TestMinimalEncoderSizes(t *testing.T) {
 		{"abcdefg", 8, 8},
 	}
 
+	minimalEncoder := MinimalEncoder{}
+	highLevelEncoder := HighLevelEncoder{}
 	for _, tc := range testCases {
-		minimal, e1 := EncodeHighLevelMinimal(tc.msg)
-		highLevel, e2 := EncodeHighLevel(tc.msg, shape, nil, nil)
+		minimal, e1 := minimalEncoder.EncodeHighLevel(tc.msg, nil, -1, shape)
+		highLevel, e2 := highLevelEncoder.EncodeHighLevel(tc.msg, shape, nil, nil, false)
 
 		if e1 != nil {
-			t.Fatalf("EncodeHighLevelMinimal(%q) returns error: %v", tc.msg, e1)
+			t.Fatalf("EncodeHighLevel(%q) returns error: %v", tc.msg, e1)
 		}
 		if e2 != nil {
 			t.Fatalf("EncodeHighLevel(%q) returns error: %v", tc.msg, e2)
@@ -479,11 +494,12 @@ func TestMinimalEncoderSizes(t *testing.T) {
 // Specific test cases with expected outputs where applicable
 
 func TestMinimalEncoderSpecificCases(t *testing.T) {
+	encoder := MinimalEncoder{}
 	// Test case that should match HighLevelEncoder output
 	str := "[)>\u001E05\u001Daaaaaa\u001E\u0004"
-	b, e := EncodeHighLevelMinimal(str)
+	b, e := encoder.EncodeHighLevel(str, nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	// HighLevelEncoder produces: []byte{236, 239, 89, 191, 89, 191, 254, 129}
 	// MinimalEncoder should produce the same or similar
@@ -491,22 +507,22 @@ func TestMinimalEncoderSpecificCases(t *testing.T) {
 	if !reflect.DeepEqual(b, expect) {
 		// For now, just check it starts correctly
 		if b[0] != expect[0] {
-			t.Fatalf("EncodeHighLevelMinimal macro 05 = %v, expect starts with %v", b, expect)
+			t.Fatalf("EncodeHighLevel macro 05 = %v, expect starts with %v", b, expect)
 		}
 	}
 
 	// Test case that should match HighLevelEncoder output
 	str = "[)>\u001E06\u001Daaaaaa\u001E\u0004"
-	b, e = EncodeHighLevelMinimal(str)
+	b, e = encoder.EncodeHighLevel(str, nil, -1, SymbolShapeHint_FORCE_NONE)
 	if e != nil {
-		t.Fatalf("EncodeHighLevelMinimal returns error: %v", e)
+		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	// HighLevelEncoder produces: []byte{237, 239, 89, 191, 89, 191, 254, 129}
 	expect = []byte{237, 239, 89, 191, 89, 191, 254, 129}
 	if !reflect.DeepEqual(b, expect) {
 		// For now, just check it starts correctly
 		if b[0] != expect[0] {
-			t.Fatalf("EncodeHighLevelMinimal macro 06 = %v, expect starts with %v", b, expect)
+			t.Fatalf("EncodeHighLevel macro 06 = %v, expect starts with %v", b, expect)
 		}
 	}
 
@@ -543,12 +559,12 @@ func TestMinimalEncoderSpecificCases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			b, e := EncodeHighLevelMinimal(tc.msg)
+			b, e := encoder.EncodeHighLevel(tc.msg, nil, -1, SymbolShapeHint_FORCE_NONE)
 			if e != nil {
-				t.Fatalf("EncodeHighLevelMinimal(%q) returns error: %v", tc.msg, e)
+				t.Fatalf("EncodeHighLevel(%q) returns error: %v", tc.msg, e)
 			}
 			if len(b) == 0 {
-				t.Fatalf("EncodeHighLevelMinimal(%q) returns empty", tc.msg)
+				t.Fatalf("EncodeHighLevel(%q) returns empty", tc.msg)
 			}
 			// Verify all bytes are in valid range
 			for i, byt := range b {

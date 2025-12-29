@@ -105,6 +105,12 @@ const (
 	 * {@link String} value). When true, uses MinimalEncoder for GS1 support.
 	 */
 	EncodeHintType_DATA_MATRIX_COMPACT
+
+	/**
+	 * Forces C40 encoding for DataMatrix (type {@link Boolean}, or "true" or "false"
+	 * {@link String} value).
+	 */
+	EncodeHintType_FORCE_C40
 )
 
 func (this EncodeHintType) String() string {
@@ -139,6 +145,8 @@ func (this EncodeHintType) String() string {
 		return "FORCE_CODE_SET"
 	case EncodeHintType_DATA_MATRIX_COMPACT:
 		return "DATA_MATRIX_COMPACT"
+	case EncodeHintType_FORCE_C40:
+		return "FORCE_C40"
 	}
 	return ""
 }

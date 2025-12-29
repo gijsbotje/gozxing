@@ -32,7 +32,7 @@ func (this EdifactEncoder) encode(context *EncoderContext) error {
 			context.WriteCodewords(codewords)
 			buffer = buffer[4:]
 
-			newMode := HighLevelEncoder_lookAheadTest(context.GetMessage(), context.pos, this.getEncodingMode())
+			newMode := HighLevelEncoder{}.LookAheadTest(context.GetMessage(), context.pos, this.getEncodingMode())
 			if newMode != this.getEncodingMode() {
 				// Return to ASCII encodation, which will actually handle latch to new mode
 				context.SignalEncoderChange(HighLevelEncoder_ASCII_ENCODATION)

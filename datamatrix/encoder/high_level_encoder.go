@@ -72,6 +72,10 @@ const (
 	HighLevelEncoder_BASE256_ENCODATION = 5
 )
 
+// HighLevelEncoder Performs message encoding of a DataMatrix message using the
+// algorithm described in annex P of ISO/IEC 16022:2000(E).
+type HighLevelEncoder struct{}
+
 func randomize253State(codewordPosition int) byte {
 	pseudoRandom := ((149 * codewordPosition) % 253) + 1
 	tempVariable := HighLevelEncoder_PAD + pseudoRandom
@@ -91,11 +95,13 @@ func randomize253State(codewordPosition int) byte {
 //
 // @param minSize the minimum symbol size constraint or null for no constraint
 // @param maxSize the maximum symbol size constraint or null for no constraint
+// @param forceC40 enforce C40 encoding
 // @return the encoded message (the char values range from 0 to 255)
-func EncodeHighLevel(msg string, shape SymbolShapeHint, minSize, maxSize *gozxing.Dimension) ([]byte, error) {
+func (h HighLevelEncoder) EncodeHighLevel(msg string, shape SymbolShapeHint, minSize, maxSize *gozxing.Dimension, forceC40 bool) ([]byte, error) {
 	//the codewords 0..255 are encoded as Unicode characters
+	c40Encoder := NewC40Encoder()
 	encoders := []Encoder{
-		NewASCIIEncoder(), NewC40Encoder(), NewTextEncoder(),
+		NewASCIIEncoder(), c40Encoder, NewTextEncoder(),
 		NewX12Encoder(), NewEdifactEncoder(), NewBase256Encoder(),
 	}
 
@@ -119,6 +125,18 @@ func EncodeHighLevel(msg string, shape SymbolShapeHint, minSize, maxSize *gozxin
 	}
 
 	encodingMode := HighLevelEncoder_ASCII_ENCODATION //Default mode
+
+	if forceC40 {
+		if c40Enc, ok := c40Encoder.(*C40Encoder); ok {
+			e = c40Enc.encodeMaximal(context)
+			if e != nil {
+				return nil, e
+			}
+			encodingMode = context.GetNewEncoding()
+			context.ResetEncoderSignal()
+		}
+	}
+
 	for context.HasMoreCharacters() {
 		encoders[encodingMode].encode(context)
 		if context.GetNewEncoding() >= 0 {
@@ -152,7 +170,13 @@ func EncodeHighLevel(msg string, shape SymbolShapeHint, minSize, maxSize *gozxin
 	return context.GetCodewords(), nil
 }
 
-func HighLevelEncoder_lookAheadTest(msg []byte, startpos, currentMode int) int {
+// EncodeHighLevel is a package-level convenience function that delegates to HighLevelEncoder
+func EncodeHighLevel(msg string, shape SymbolShapeHint, minSize, maxSize *gozxing.Dimension) ([]byte, error) {
+	return HighLevelEncoder{}.EncodeHighLevel(msg, shape, minSize, maxSize, false)
+}
+
+// LookAheadTest looks ahead from the current position to determine the most efficient encoding mode
+func (h HighLevelEncoder) LookAheadTest(msg []byte, startpos, currentMode int) int {
 	if startpos >= len(msg) {
 		return currentMode
 	}
@@ -197,9 +221,9 @@ func HighLevelEncoder_lookAheadTest(msg []byte, startpos, currentMode int) int {
 		charsProcessed++
 
 		//step L
-		if HighLevelEncoder_isDigit(c) {
+		if h.IsDigit(c) {
 			charCounts[HighLevelEncoder_ASCII_ENCODATION] += 0.5
-		} else if HighLevelEncoder_isExtendedASCII(c) {
+		} else if h.IsExtendedASCII(c) {
 			charCounts[HighLevelEncoder_ASCII_ENCODATION] =
 				math.Ceil(charCounts[HighLevelEncoder_ASCII_ENCODATION])
 			charCounts[HighLevelEncoder_ASCII_ENCODATION] += 2.0
@@ -212,7 +236,7 @@ func HighLevelEncoder_lookAheadTest(msg []byte, startpos, currentMode int) int {
 		//step M
 		if isNativeC40(c) {
 			charCounts[HighLevelEncoder_C40_ENCODATION] += 2.0 / 3.0
-		} else if HighLevelEncoder_isExtendedASCII(c) {
+		} else if h.IsExtendedASCII(c) {
 			charCounts[HighLevelEncoder_C40_ENCODATION] += 8.0 / 3.0
 		} else {
 			charCounts[HighLevelEncoder_C40_ENCODATION] += 4.0 / 3.0
@@ -221,7 +245,7 @@ func HighLevelEncoder_lookAheadTest(msg []byte, startpos, currentMode int) int {
 		//step N
 		if isNativeText(c) {
 			charCounts[HighLevelEncoder_TEXT_ENCODATION] += 2.0 / 3.0
-		} else if HighLevelEncoder_isExtendedASCII(c) {
+		} else if h.IsExtendedASCII(c) {
 			charCounts[HighLevelEncoder_TEXT_ENCODATION] += 8.0 / 3.0
 		} else {
 			charCounts[HighLevelEncoder_TEXT_ENCODATION] += 4.0 / 3.0
@@ -230,7 +254,7 @@ func HighLevelEncoder_lookAheadTest(msg []byte, startpos, currentMode int) int {
 		//step O
 		if isNativeX12(c) {
 			charCounts[HighLevelEncoder_X12_ENCODATION] += 2.0 / 3.0
-		} else if HighLevelEncoder_isExtendedASCII(c) {
+		} else if h.IsExtendedASCII(c) {
 			charCounts[HighLevelEncoder_X12_ENCODATION] += 13.0 / 3.0
 		} else {
 			charCounts[HighLevelEncoder_X12_ENCODATION] += 10.0 / 3.0
@@ -239,7 +263,7 @@ func HighLevelEncoder_lookAheadTest(msg []byte, startpos, currentMode int) int {
 		//step P
 		if isNativeEDIFACT(c) {
 			charCounts[HighLevelEncoder_EDIFACT_ENCODATION] += 3.0 / 4.0
-		} else if HighLevelEncoder_isExtendedASCII(c) {
+		} else if h.IsExtendedASCII(c) {
 			charCounts[HighLevelEncoder_EDIFACT_ENCODATION] += 17.0 / 4.0
 		} else {
 			charCounts[HighLevelEncoder_EDIFACT_ENCODATION] += 13.0 / 4.0
@@ -333,11 +357,13 @@ func getMinimumCount(mins []byte) int {
 	return minCount
 }
 
-func HighLevelEncoder_isDigit(ch byte) bool {
+// IsDigit checks if a character is a digit
+func (h HighLevelEncoder) IsDigit(ch byte) bool {
 	return ch >= '0' && ch <= '9'
 }
 
-func HighLevelEncoder_isExtendedASCII(ch byte) bool {
+// IsExtendedASCII checks if a character is extended ASCII (128-255)
+func (h HighLevelEncoder) IsExtendedASCII(ch byte) bool {
 	return ch >= 128 && ch <= 255
 }
 
@@ -367,16 +393,36 @@ func isSpecialB256(ch byte) bool {
 	return false //TODO NOT IMPLEMENTED YET!!!
 }
 
-// determineConsecutiveDigitCount Determines the number of consecutive characters that are encodable using numeric compaction.
+// DetermineConsecutiveDigitCount Determines the number of consecutive characters that are encodable using numeric compaction.
 //
 // @param msg      the message
 // @param startpos the start position within the message
 // @return the requested character count
-func HighLevelEncoder_determineConsecutiveDigitCount(msg []byte, startpos int) int {
+func (h HighLevelEncoder) DetermineConsecutiveDigitCount(msg []byte, startpos int) int {
 	len := len(msg)
 	idx := startpos
-	for idx < len && HighLevelEncoder_isDigit(msg[idx]) {
+	for idx < len && h.IsDigit(msg[idx]) {
 		idx++
 	}
 	return idx - startpos
+}
+
+// HighLevelEncoder_lookAheadTest is a package-level convenience function that delegates to HighLevelEncoder
+func HighLevelEncoder_lookAheadTest(msg []byte, startpos, currentMode int) int {
+	return HighLevelEncoder{}.LookAheadTest(msg, startpos, currentMode)
+}
+
+// HighLevelEncoder_isDigit is a package-level convenience function that delegates to HighLevelEncoder
+func HighLevelEncoder_isDigit(ch byte) bool {
+	return HighLevelEncoder{}.IsDigit(ch)
+}
+
+// HighLevelEncoder_isExtendedASCII is a package-level convenience function that delegates to HighLevelEncoder
+func HighLevelEncoder_isExtendedASCII(ch byte) bool {
+	return HighLevelEncoder{}.IsExtendedASCII(ch)
+}
+
+// HighLevelEncoder_determineConsecutiveDigitCount is a package-level convenience function that delegates to HighLevelEncoder
+func HighLevelEncoder_determineConsecutiveDigitCount(msg []byte, startpos int) int {
+	return HighLevelEncoder{}.DetermineConsecutiveDigitCount(msg, startpos)
 }

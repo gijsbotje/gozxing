@@ -49,31 +49,33 @@ func TestGetMinimumCount(t *testing.T) {
 }
 
 func TestHighLevelEncoder_isDigit(t *testing.T) {
-	if HighLevelEncoder_isDigit('/') != false {
+	encoder := HighLevelEncoder{}
+	if encoder.IsDigit('/') != false {
 		t.Fatalf("isDigit('/') must false")
 	}
-	if HighLevelEncoder_isDigit('0') != true {
+	if encoder.IsDigit('0') != true {
 		t.Fatalf("isDigit('0') must true")
 	}
-	if HighLevelEncoder_isDigit('9') != true {
+	if encoder.IsDigit('9') != true {
 		t.Fatalf("isDigit('9') must true")
 	}
-	if HighLevelEncoder_isDigit(':') != false {
+	if encoder.IsDigit(':') != false {
 		t.Fatalf("isDigit(':') must false")
 	}
 }
 
 func TestHighLevelEncoder_isExtendedASCII(t *testing.T) {
-	if HighLevelEncoder_isExtendedASCII(' ') != false {
+	encoder := HighLevelEncoder{}
+	if encoder.IsExtendedASCII(' ') != false {
 		t.Fatalf("isExtendedASCII(' ') must false")
 	}
-	if HighLevelEncoder_isExtendedASCII(0x7f) != false {
+	if encoder.IsExtendedASCII(0x7f) != false {
 		t.Fatalf("isExtendedASCII(0x7f) must false")
 	}
-	if HighLevelEncoder_isExtendedASCII(0x80) != true {
+	if encoder.IsExtendedASCII(0x80) != true {
 		t.Fatalf("isExtendedASCII(0x80) must true")
 	}
-	if HighLevelEncoder_isExtendedASCII(0xff) != true {
+	if encoder.IsExtendedASCII(0xff) != true {
 		t.Fatalf("isExtendedASCII(0xff) must true")
 	}
 }
@@ -145,30 +147,32 @@ func TestIsSpecialB256(t *testing.T) {
 }
 
 func TestHighLevelEncoder_determineConsecutiveDigitCount(t *testing.T) {
+	encoder := HighLevelEncoder{}
 	msg := []byte("   0123bc")
-	if r := HighLevelEncoder_determineConsecutiveDigitCount(msg, 0); r != 0 {
+	if r := encoder.DetermineConsecutiveDigitCount(msg, 0); r != 0 {
 		t.Fatalf("determineConsecutiveDigitCount = %v, expect 0", r)
 	}
-	if r := HighLevelEncoder_determineConsecutiveDigitCount(msg, 2); r != 0 {
+	if r := encoder.DetermineConsecutiveDigitCount(msg, 2); r != 0 {
 		t.Fatalf("determineConsecutiveDigitCount = %v, expect 0", r)
 	}
-	if r := HighLevelEncoder_determineConsecutiveDigitCount(msg, 3); r != 4 {
+	if r := encoder.DetermineConsecutiveDigitCount(msg, 3); r != 4 {
 		t.Fatalf("determineConsecutiveDigitCount = %v, expect 4", r)
 	}
-	if r := HighLevelEncoder_determineConsecutiveDigitCount(msg, 6); r != 1 {
+	if r := encoder.DetermineConsecutiveDigitCount(msg, 6); r != 1 {
 		t.Fatalf("determineConsecutiveDigitCount = %v, expect 1", r)
 	}
-	if r := HighLevelEncoder_determineConsecutiveDigitCount(msg, 7); r != 0 {
+	if r := encoder.DetermineConsecutiveDigitCount(msg, 7); r != 0 {
 		t.Fatalf("determineConsecutiveDigitCount = %v, expect 0", r)
 	}
 }
 
 func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
+	encoder := HighLevelEncoder{}
 	msg := []byte{}
 	pos := 0
 	mode := HighLevelEncoder_ASCII_ENCODATION
 	expect := HighLevelEncoder_ASCII_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -176,7 +180,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 0
 	mode = HighLevelEncoder_BASE256_ENCODATION
 	expect = HighLevelEncoder_ASCII_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -184,7 +188,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_ASCII_ENCODATION
 	expect = HighLevelEncoder_BASE256_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -192,7 +196,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_EDIFACT_ENCODATION
 	expect = HighLevelEncoder_EDIFACT_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -200,7 +204,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_TEXT_ENCODATION
 	expect = HighLevelEncoder_TEXT_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -208,7 +212,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_X12_ENCODATION
 	expect = HighLevelEncoder_X12_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -216,7 +220,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_C40_ENCODATION
 	expect = HighLevelEncoder_C40_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -224,7 +228,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_BASE256_ENCODATION
 	expect = HighLevelEncoder_ASCII_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -232,7 +236,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_ASCII_ENCODATION
 	expect = HighLevelEncoder_BASE256_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -240,7 +244,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_ASCII_ENCODATION
 	expect = HighLevelEncoder_EDIFACT_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -248,7 +252,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_ASCII_ENCODATION
 	expect = HighLevelEncoder_TEXT_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -256,7 +260,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_ASCII_ENCODATION
 	expect = HighLevelEncoder_X12_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -264,7 +268,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_C40_ENCODATION
 	expect = HighLevelEncoder_C40_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -272,7 +276,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_ASCII_ENCODATION
 	expect = HighLevelEncoder_C40_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -280,7 +284,7 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_ASCII_ENCODATION
 	expect = HighLevelEncoder_X12_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 
@@ -288,21 +292,22 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 	pos = 1
 	mode = HighLevelEncoder_ASCII_ENCODATION
 	expect = HighLevelEncoder_C40_ENCODATION
-	if r := HighLevelEncoder_lookAheadTest(msg, pos, mode); r != expect {
+	if r := encoder.LookAheadTest(msg, pos, mode); r != expect {
 		t.Fatalf("lookAheadTest = %v, expect %v", r, expect)
 	}
 }
 
 func TestEncodeHighLevel(t *testing.T) {
 	shape := SymbolShapeHint_FORCE_NONE
+	encoder := HighLevelEncoder{}
 
-	_, e := EncodeHighLevel("Mосква", shape, nil, nil)
+	_, e := encoder.EncodeHighLevel("Mосква", shape, nil, nil, false)
 	if e == nil {
 		t.Fatalf("EncodeHighLevel(Mосква) must be error")
 	}
 
 	str := string(make([]byte, 1559))
-	_, e = EncodeHighLevel(str, shape, nil, nil)
+	_, e = encoder.EncodeHighLevel(str, shape, nil, nil, false)
 	if e == nil {
 		t.Fatalf("EncodeHighLevel([1559]) must be error")
 	}
@@ -312,7 +317,7 @@ func TestEncodeHighLevel(t *testing.T) {
 		230, 19, 111, 19, 111, 19, 111, 19, 111, 254, 130, 130, 130, 129, 87, 237, 133, 28,
 	}
 	min, _ := gozxing.NewDimension(16, 16)
-	b, e := EncodeHighLevel(str, shape, min, nil)
+	b, e := encoder.EncodeHighLevel(str, shape, min, nil, false)
 	if e != nil {
 		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
@@ -321,7 +326,7 @@ func TestEncodeHighLevel(t *testing.T) {
 	}
 
 	str = "[)>\u001E05\u001Daaaaaa\u001E\u0004"
-	b, e = EncodeHighLevel(str, shape, nil, nil)
+	b, e = encoder.EncodeHighLevel(str, shape, nil, nil, false)
 	expect = []byte{236, 239, 89, 191, 89, 191, 254, 129}
 	if e != nil {
 		t.Fatalf("EncodeHighLevel returns error: %v", e)
@@ -331,7 +336,7 @@ func TestEncodeHighLevel(t *testing.T) {
 	}
 
 	str = "[)>\u001E06\u001Daaaaaa\u001E\u0004"
-	b, e = EncodeHighLevel(str, shape, nil, nil)
+	b, e = encoder.EncodeHighLevel(str, shape, nil, nil, false)
 	expect = []byte{237, 239, 89, 191, 89, 191, 254, 129}
 	if e != nil {
 		t.Fatalf("EncodeHighLevel returns error: %v", e)
