@@ -2,7 +2,6 @@ package encoder
 
 import (
 	"math"
-	"strconv"
 	"strings"
 
 	"github.com/makiuchi-d/gozxing"
@@ -21,7 +20,7 @@ const (
 	HighLevelEncoder_LATCH_TO_BASE256 = 231
 
 	// FNC1 Codeword
-	HighLevelEncoder_FUNC1 = 232
+	// HighLevelEncoder_FUNC1 = 232
 
 	// Structured Append Codeword
 	// HighLevelEncoder_STRUCTURED_APPEND = 233
@@ -87,13 +86,13 @@ func randomize253State(codewordPosition int) byte {
 //
 // @param msg     the message
 // @param shape   requested shape. May be {@code SymbolShapeHint.FORCE_NONE},
-//                {@code SymbolShapeHint.FORCE_SQUARE} or {@code SymbolShapeHint.FORCE_RECTANGLE}.
+//
+//	{@code SymbolShapeHint.FORCE_SQUARE} or {@code SymbolShapeHint.FORCE_RECTANGLE}.
+//
 // @param minSize the minimum symbol size constraint or null for no constraint
 // @param maxSize the maximum symbol size constraint or null for no constraint
-// @param hints   optional encoding hints (e.g., GS1_FORMAT)
 // @return the encoded message (the char values range from 0 to 255)
-//
-func EncodeHighLevel(msg string, shape SymbolShapeHint, minSize, maxSize *gozxing.Dimension, hints map[gozxing.EncodeHintType]interface{}) ([]byte, error) {
+func EncodeHighLevel(msg string, shape SymbolShapeHint, minSize, maxSize *gozxing.Dimension) ([]byte, error) {
 	//the codewords 0..255 are encoded as Unicode characters
 	encoders := []Encoder{
 		NewASCIIEncoder(), NewC40Encoder(), NewTextEncoder(),
@@ -106,22 +105,6 @@ func EncodeHighLevel(msg string, shape SymbolShapeHint, minSize, maxSize *gozxin
 	}
 	context.SetSymbolShape(shape)
 	context.SetSizeConstraints(minSize, maxSize)
-
-	// Prepend FNC1 codeword for GS1 format (must be first codeword)
-	if hints != nil {
-		if gs1FormatHint, ok := hints[gozxing.EncodeHintType_GS1_FORMAT]; ok {
-			gs1Format := false
-			switch v := gs1FormatHint.(type) {
-			case bool:
-				gs1Format = v
-			case string:
-				gs1Format, _ = strconv.ParseBool(v)
-			}
-			if gs1Format {
-				context.WriteCodeword(HighLevelEncoder_FUNC1)
-			}
-		}
-	}
 
 	if strings.HasPrefix(msg, HighLevelEncoder_MACRO_05_HEADER) &&
 		strings.HasSuffix(msg, HighLevelEncoder_MACRO_TRAILER) {
@@ -389,7 +372,6 @@ func isSpecialB256(ch byte) bool {
 // @param msg      the message
 // @param startpos the start position within the message
 // @return the requested character count
-//
 func HighLevelEncoder_determineConsecutiveDigitCount(msg []byte, startpos int) int {
 	len := len(msg)
 	idx := startpos

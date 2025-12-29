@@ -296,13 +296,13 @@ func TestHighLevelEncoder_lookAheadTest(t *testing.T) {
 func TestEncodeHighLevel(t *testing.T) {
 	shape := SymbolShapeHint_FORCE_NONE
 
-	_, e := EncodeHighLevel("Mосква", shape, nil, nil, nil)
+	_, e := EncodeHighLevel("Mосква", shape, nil, nil)
 	if e == nil {
 		t.Fatalf("EncodeHighLevel(Mосква) must be error")
 	}
 
 	str := string(make([]byte, 1559))
-	_, e = EncodeHighLevel(str, shape, nil, nil, nil)
+	_, e = EncodeHighLevel(str, shape, nil, nil)
 	if e == nil {
 		t.Fatalf("EncodeHighLevel([1559]) must be error")
 	}
@@ -312,7 +312,7 @@ func TestEncodeHighLevel(t *testing.T) {
 		230, 19, 111, 19, 111, 19, 111, 19, 111, 254, 130, 130, 130, 129, 87, 237, 133, 28,
 	}
 	min, _ := gozxing.NewDimension(16, 16)
-	b, e := EncodeHighLevel(str, shape, min, nil, nil)
+	b, e := EncodeHighLevel(str, shape, min, nil)
 	if e != nil {
 		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
@@ -321,7 +321,7 @@ func TestEncodeHighLevel(t *testing.T) {
 	}
 
 	str = "[)>\u001E05\u001Daaaaaa\u001E\u0004"
-	b, e = EncodeHighLevel(str, shape, nil, nil, nil)
+	b, e = EncodeHighLevel(str, shape, nil, nil)
 	expect = []byte{236, 239, 89, 191, 89, 191, 254, 129}
 	if e != nil {
 		t.Fatalf("EncodeHighLevel returns error: %v", e)
@@ -331,71 +331,12 @@ func TestEncodeHighLevel(t *testing.T) {
 	}
 
 	str = "[)>\u001E06\u001Daaaaaa\u001E\u0004"
-	b, e = EncodeHighLevel(str, shape, nil, nil, nil)
+	b, e = EncodeHighLevel(str, shape, nil, nil)
 	expect = []byte{237, 239, 89, 191, 89, 191, 254, 129}
 	if e != nil {
 		t.Fatalf("EncodeHighLevel returns error: %v", e)
 	}
 	if !reflect.DeepEqual(b, expect) {
 		t.Fatalf("EncodeHighLevel = %v, expect %v", b, expect)
-	}
-}
-
-func TestEncodeHighLevel_GS1Format(t *testing.T) {
-	shape := SymbolShapeHint_FORCE_NONE
-
-	hints := map[gozxing.EncodeHintType]interface{}{
-		gozxing.EncodeHintType_GS1_FORMAT: true,
-	}
-	str := "0104912345123459"
-	b, e := EncodeHighLevel(str, shape, nil, nil, hints)
-	if e != nil {
-		t.Fatalf("EncodeHighLevel with GS1_FORMAT=true returns error: %v", e)
-	}
-	// FNC1 codeword (232) should be the first codeword
-	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevel with GS1_FORMAT=true returned empty result")
-	}
-	if b[0] != HighLevelEncoder_FUNC1 {
-		t.Fatalf("EncodeHighLevel with GS1_FORMAT=true: first codeword = %v, expect %v (FNC1)", b[0], HighLevelEncoder_FUNC1)
-	}
-
-	hints = map[gozxing.EncodeHintType]interface{}{
-		gozxing.EncodeHintType_GS1_FORMAT: "true",
-	}
-	b, e = EncodeHighLevel(str, shape, nil, nil, hints)
-	if e != nil {
-		t.Fatalf("EncodeHighLevel with GS1_FORMAT=\"true\" returns error: %v", e)
-	}
-	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevel with GS1_FORMAT=\"true\" returned empty result")
-	}
-	if b[0] != HighLevelEncoder_FUNC1 {
-		t.Fatalf("EncodeHighLevel with GS1_FORMAT=\"true\": first codeword = %v, expect %v (FNC1)", b[0], HighLevelEncoder_FUNC1)
-	}
-
-	hints = map[gozxing.EncodeHintType]interface{}{
-		gozxing.EncodeHintType_GS1_FORMAT: false,
-	}
-	b, e = EncodeHighLevel(str, shape, nil, nil, hints)
-	if e != nil {
-		t.Fatalf("EncodeHighLevel with GS1_FORMAT=false returns error: %v", e)
-	}
-	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevel with GS1_FORMAT=false returned empty result")
-	}
-	if b[0] == HighLevelEncoder_FUNC1 {
-		t.Fatalf("EncodeHighLevel with GS1_FORMAT=false: first codeword should NOT be FNC1, got %v", b[0])
-	}
-
-	b, e = EncodeHighLevel(str, shape, nil, nil, nil)
-	if e != nil {
-		t.Fatalf("EncodeHighLevel without GS1_FORMAT hint returns error: %v", e)
-	}
-	if len(b) == 0 {
-		t.Fatalf("EncodeHighLevel without GS1_FORMAT hint returned empty result")
-	}
-	if b[0] == HighLevelEncoder_FUNC1 {
-		t.Fatalf("EncodeHighLevel without GS1_FORMAT hint: first codeword should NOT be FNC1, got %v", b[0])
 	}
 }

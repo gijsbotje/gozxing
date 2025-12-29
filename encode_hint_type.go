@@ -99,6 +99,12 @@ const (
 	 *  Valid values are "A", "B", "C".
 	 */
 	EncodeHintType_FORCE_CODE_SET
+
+	/**
+	 * Specifies whether to use compact mode for DataMatrix (type {@link Boolean}, or "true" or "false"
+	 * {@link String} value). When true, uses MinimalEncoder for GS1 support.
+	 */
+	EncodeHintType_DATA_MATRIX_COMPACT
 )
 
 func (this EncodeHintType) String() string {
@@ -131,6 +137,8 @@ func (this EncodeHintType) String() string {
 		return "GS1_FORMAT"
 	case EncodeHintType_FORCE_CODE_SET:
 		return "FORCE_CODE_SET"
+	case EncodeHintType_DATA_MATRIX_COMPACT:
+		return "DATA_MATRIX_COMPACT"
 	}
 	return ""
 }
