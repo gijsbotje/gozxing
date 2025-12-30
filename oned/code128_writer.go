@@ -1,8 +1,6 @@
 package oned
 
 import (
-	"strconv"
-
 	"github.com/makiuchi-d/gozxing"
 )
 
@@ -55,24 +53,6 @@ func (e code128Encoder) encode(contents string) ([]bool, error) {
 }
 
 func (code128Encoder) encodeWithHints(contentsStr string, hints map[gozxing.EncodeHintType]interface{}) ([]bool, error) {
-	// Check for GS1 format hint and prepend FNC1 if needed
-	gs1Format := false
-	if hints != nil {
-		if gs1FormatHint, ok := hints[gozxing.EncodeHintType_GS1_FORMAT]; ok {
-			switch v := gs1FormatHint.(type) {
-			case bool:
-				gs1Format = v
-			case string:
-				gs1Format, _ = strconv.ParseBool(v)
-			}
-		}
-	}
-
-	// Prepend FNC1 character for GS1 format
-	if gs1Format {
-		contentsStr = string(code128ESCAPE_FNC_1) + contentsStr
-	}
-
 	contents := []rune(contentsStr)
 	length := len(contents)
 	// Check length
