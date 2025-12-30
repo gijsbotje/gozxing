@@ -63,22 +63,21 @@ func (code128Encoder) encodeWithHints(contentsStr string, hints map[gozxing.Enco
 
 	// Check for forced code set hint.
 	forcedCodeSet := -1
-	if hints != nil {
-		if codeSetHint, ok := hints[gozxing.EncodeHintType_FORCE_CODE_SET]; ok {
-			switch s := codeSetHint.(string); s {
-			case "A":
-				forcedCodeSet = code128CODE_CODE_A
-				break
-			case "B":
-				forcedCodeSet = code128CODE_CODE_B
-				break
-			case "C":
-				forcedCodeSet = code128CODE_CODE_C
-				break
-			default:
-				return nil, gozxing.NewWriterException(
-					"IllegalArgumentException: Unsupported code set hint: %v", codeSetHint)
-			}
+
+	if codeSetHint, ok := hints[gozxing.EncodeHintType_FORCE_CODE_SET]; ok {
+		switch s := codeSetHint.(string); s {
+		case "A":
+			forcedCodeSet = code128CODE_CODE_A
+			break
+		case "B":
+			forcedCodeSet = code128CODE_CODE_B
+			break
+		case "C":
+			forcedCodeSet = code128CODE_CODE_C
+			break
+		default:
+			return nil, gozxing.NewWriterException(
+				"IllegalArgumentException: Unsupported code set hint: %v", codeSetHint)
 		}
 	}
 
