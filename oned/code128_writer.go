@@ -63,7 +63,6 @@ func (code128Encoder) encodeWithHints(contentsStr string, hints map[gozxing.Enco
 
 	// Check for forced code set hint.
 	forcedCodeSet := -1
-
 	if codeSetHint, ok := hints[gozxing.EncodeHintType_FORCE_CODE_SET]; ok {
 		switch s := codeSetHint.(string); s {
 		case "A":
