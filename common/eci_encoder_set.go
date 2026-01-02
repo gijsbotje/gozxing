@@ -6,6 +6,7 @@ import (
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/ianaindex"
+	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/encoding/unicode"
 
 	"github.com/makiuchi-d/gozxing"
@@ -26,38 +27,27 @@ type ECIEncoderSet struct {
 	priorityEncoderIndex int
 }
 
-var encodersList []encoding.Encoding
-
-func init() {
-	names := []string{
-		"IBM437",
-		"ISO-8859-2",
-		"ISO-8859-3",
-		"ISO-8859-4",
-		"ISO-8859-5",
-		"ISO-8859-6",
-		"ISO-8859-7",
-		"ISO-8859-8",
-		"ISO-8859-9",
-		"ISO-8859-10",
-		"ISO-8859-11",
-		"ISO-8859-13",
-		"ISO-8859-14",
-		"ISO-8859-15",
-		"ISO-8859-16",
-		"windows-1250",
-		"windows-1251",
-		"windows-1252",
-		"windows-1256",
-		"Shift_JIS",
-	}
-	for _, name := range names {
-		if _, ok := GetCharacterSetECIByName(name); ok {
-			if enc, err := ianaindex.IANA.Encoding(name); err == nil {
-				encodersList = append(encodersList, enc)
-			}
-		}
-	}
+var encodersList = []encoding.Encoding{
+	charmap.CodePage437, // "IBM437"
+	charmap.ISO8859_2,
+	charmap.ISO8859_3,
+	charmap.ISO8859_4,
+	charmap.ISO8859_5,
+	charmap.ISO8859_6,
+	charmap.ISO8859_7,
+	charmap.ISO8859_8,
+	charmap.ISO8859_9,
+	charmap.ISO8859_10,
+	//charmap.ISO8859_11, // golang does not support
+	charmap.ISO8859_13,
+	charmap.ISO8859_14,
+	charmap.ISO8859_15,
+	charmap.ISO8859_16,
+	charmap.Windows1250,
+	charmap.Windows1251,
+	charmap.Windows1252,
+	charmap.Windows1256,
+	japanese.ShiftJIS,
 }
 
 // NewECIEncoderSet Constructs an encoder set
