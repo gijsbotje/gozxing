@@ -66,6 +66,12 @@ const (
 	EncodeHintType_PDF417_DIMENSIONS
 
 	/**
+	 * Specifies whether to automatically insert ECIs when encoding PDF417 (type {@link Boolean}, or "true" or "false"
+	 * {@link String} value).
+	 */
+	EncodeHintType_PDF417_AUTO_ECI
+
+	/**
 	 * Specifies the required number of layers for an Aztec code.
 	 * A negative number (-1, -2, -3, -4) specifies a compact Aztec code.
 	 * 0 indicates to use the minimum number of layers (the default).
@@ -121,6 +127,8 @@ func (this EncodeHintType) String() string {
 		return "PDF417_COMPACTION"
 	case EncodeHintType_PDF417_DIMENSIONS:
 		return "PDF417_DIMENSIONS"
+	case EncodeHintType_PDF417_AUTO_ECI:
+		return "PDF417_AUTO_ECI"
 	case EncodeHintType_AZTEC_LAYERS:
 		return "AZTEC_LAYERS"
 	case EncodeHintType_QR_VERSION:
