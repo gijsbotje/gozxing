@@ -126,8 +126,7 @@ func TestAztecWriter_EncodeDecodeRoundTrip(t *testing.T) {
 		"Abc123!",
 		"Lorem ipsum. http://test/",
 		"AAAANAAAANAAAANAAAANAAAANAAAANAAAANAAAANAAAANAAAAN",
-		// Note: The following string has a known decoder issue with space handling
-		// "http://test/~!@#*^%&)__ ;:'\"[]{}\\|-+-=`1029384",
+		"http://test/~!@#*^%&)__ ;:'\"[]{}\\|-+-=`1029384",
 	}
 
 	for _, contents := range testCases {
