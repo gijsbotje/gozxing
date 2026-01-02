@@ -1,24 +1,28 @@
 package common
 
 import (
-	"github.com/makiuchi-d/gozxing"
+	"strings"
+
 	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/ianaindex"
 	"golang.org/x/text/encoding/unicode"
+
+	"github.com/makiuchi-d/gozxing"
 )
 
 // ECIEncoderSet Set of CharsetEncoders for a given input string
 //
 // Invariants:
-// - The list contains only encoders from CharacterSetECI (list is shorter then the list of encoders available on
-//   the platform for which ECI values are defined).
-// - The list contains encoders at least one encoder for every character in the input.
-// - The first encoder in the list is always the ISO-8859-1 encoder even of no character in the input can be encoded
-//       by it.
-// - If the input contains a character that is not in ISO-8859-1 then the last two entries in the list will be the
-//   UTF-8 encoder and the UTF-16BE encoder.
+//   - The list contains only encoders from CharacterSetECI (list is shorter then the list of encoders available on
+//     the platform for which ECI values are defined).
+//   - The list contains encoders at least one encoder for every character in the input.
+//   - The first encoder in the list is always the ISO-8859-1 encoder even of no character in the input can be encoded
+//     by it.
+//   - If the input contains a character that is not in ISO-8859-1 then the last two entries in the list will be the
+//     UTF-8 encoder and the UTF-16BE encoder.
 type ECIEncoderSet struct {
-	encoders            []encoding.Encoding
+	encoders             []encoding.Encoding
 	priorityEncoderIndex int
 }
 
@@ -63,23 +67,23 @@ func init() {
 // @param fnc1 fnc1 denotes the character in the input that represents the FNC1 character or -1 for a non-GS1 bar
 // code. When specified, it is considered an error to pass it as argument to the methods canEncode() or encode().
 func NewECIEncoderSet(stringToEncode string, priorityCharset encoding.Encoding, fnc1 int) *ECIEncoderSet {
+	strToEnc := []rune(stringToEncode)
 	neededEncoders := make([]encoding.Encoding, 0)
 
 	// we always need the ISO-8859-1 encoder. It is the default encoding
-	iso8859_1, _ := ianaindex.IANA.Encoding("ISO-8859-1")
-	neededEncoders = append(neededEncoders, iso8859_1)
-	
+	neededEncoders = append(neededEncoders, charmap.ISO8859_1)
+
 	needUnicodeEncoder := false
 	if priorityCharset != nil {
 		if name, err := ianaindex.IANA.Name(priorityCharset); err == nil {
-			needUnicodeEncoder = len(name) >= 3 && name[:3] == "UTF"
+			needUnicodeEncoder = strings.HasPrefix(name, "UTF")
 		}
 	}
 
 	// Walk over the input string and see if all characters can be encoded with the list of encoders
-	for i := 0; i < len(stringToEncode); i++ {
+	for i := 0; i < len(strToEnc); i++ {
 		canEncode := false
-		c := rune(stringToEncode[i])
+		c := strToEnc[i]
 		if c == rune(fnc1) {
 			canEncode = true
 		} else {
@@ -142,7 +146,7 @@ func NewECIEncoderSet(stringToEncode string, priorityCharset encoding.Encoding, 
 	}
 
 	return &ECIEncoderSet{
-		encoders:            encoders,
+		encoders:             encoders,
 		priorityEncoderIndex: priorityEncoderIndexValue,
 	}
 }
@@ -209,4 +213,3 @@ func (this *ECIEncoderSet) EncodeString(s string, encoderIndex int) ([]byte, err
 	encoder := this.encoders[encoderIndex].NewEncoder()
 	return encoder.Bytes([]byte(s))
 }
-
