@@ -90,7 +90,7 @@ func (this *C40Encoder) encode(context *EncoderContext) error {
 
 		count := len(buffer)
 		if (count % 3) == 0 {
-			newMode := HighLevelEncoder{}.LookAheadTest(context.GetMessage(), context.pos, this.getEncodingMode())
+			newMode := HighLevelEncoder_lookAheadTest(context.GetMessage(), context.pos, this.getEncodingMode())
 			if newMode != this.getEncodingMode() {
 				// Return to ASCII encodation, which will actually handle latch to new mode
 				context.SignalEncoderChange(HighLevelEncoder_ASCII_ENCODATION)

@@ -16,8 +16,7 @@ func (this ASCIIEncoder) getEncodingMode() int {
 
 func (this ASCIIEncoder) encode(context *EncoderContext) error {
 	//step B
-	hlEncoder := HighLevelEncoder{}
-	n := hlEncoder.DetermineConsecutiveDigitCount(context.GetMessage(), context.pos)
+	n := HighLevelEncoder_determineConsecutiveDigitCount(context.GetMessage(), context.pos)
 	if n >= 2 {
 		digits, _ := encodeASCIIDigits(
 			context.GetMessage()[context.pos],
@@ -26,7 +25,7 @@ func (this ASCIIEncoder) encode(context *EncoderContext) error {
 		context.pos += 2
 	} else {
 		c := context.GetCurrentChar()
-		newMode := hlEncoder.LookAheadTest(context.GetMessage(), context.pos, this.getEncodingMode())
+		newMode := HighLevelEncoder_lookAheadTest(context.GetMessage(), context.pos, this.getEncodingMode())
 		if newMode != this.getEncodingMode() {
 			switch newMode {
 			case HighLevelEncoder_BASE256_ENCODATION:
@@ -52,7 +51,7 @@ func (this ASCIIEncoder) encode(context *EncoderContext) error {
 			default:
 				return gozxing.NewWriterException("IllegalStateException: Illegal mode: %v", newMode)
 			}
-		} else if hlEncoder.IsExtendedASCII(c) {
+		} else if HighLevelEncoder_isExtendedASCII(c) {
 			context.WriteCodeword(HighLevelEncoder_UPPER_SHIFT)
 			context.WriteCodeword(byte(c - 128 + 1))
 			context.pos++
@@ -65,8 +64,7 @@ func (this ASCIIEncoder) encode(context *EncoderContext) error {
 }
 
 func encodeASCIIDigits(digit1, digit2 byte) (byte, error) {
-	hlEncoder := HighLevelEncoder{}
-	if hlEncoder.IsDigit(digit1) && hlEncoder.IsDigit(digit2) {
+	if HighLevelEncoder_isDigit(digit1) && HighLevelEncoder_isDigit(digit2) {
 		num := (digit1-48)*10 + (digit2 - 48)
 		return byte(num + 130), nil
 	}
