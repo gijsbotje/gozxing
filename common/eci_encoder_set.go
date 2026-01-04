@@ -56,8 +56,7 @@ var encodersList = []encoding.Encoding{
 // @param priorityCharset The preferred encoding.Encoding or nil.
 // @param fnc1 fnc1 denotes the character in the input that represents the FNC1 character or -1 for a non-GS1 bar
 // code. When specified, it is considered an error to pass it as argument to the methods canEncode() or encode().
-func NewECIEncoderSet(stringToEncode string, priorityCharset encoding.Encoding, fnc1 int) *ECIEncoderSet {
-	strToEnc := []rune(stringToEncode)
+func NewECIEncoderSet(stringToEncode []rune, priorityCharset encoding.Encoding, fnc1 int) *ECIEncoderSet {
 	neededEncoders := make([]encoding.Encoding, 0)
 
 	// we always need the ISO-8859-1 encoder. It is the default encoding
@@ -71,9 +70,9 @@ func NewECIEncoderSet(stringToEncode string, priorityCharset encoding.Encoding, 
 	}
 
 	// Walk over the input string and see if all characters can be encoded with the list of encoders
-	for i := 0; i < len(strToEnc); i++ {
+	for i := 0; i < len(stringToEncode); i++ {
 		canEncode := false
-		c := strToEnc[i]
+		c := stringToEncode[i]
 		if c == rune(fnc1) {
 			canEncode = true
 		} else {

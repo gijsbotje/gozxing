@@ -45,7 +45,7 @@ func TestNewECIEncoderSet(t *testing.T) {
 	utf16be, _ := ianaindex.IANA.Encoding("UTF-16BE")
 
 	tests := map[string]struct {
-		str     string
+		str     []rune
 		charset encoding.Encoding
 		fnc1    int
 
@@ -55,28 +55,28 @@ func TestNewECIEncoderSet(t *testing.T) {
 		pencidx int
 	}{
 		"Latin1-only": {
-			"abc", nil, -1,
+			[]rune("abc"), nil, -1,
 			[]encoding.Encoding{latin1},
 			[]string{"ISO_8859-1:1987"},
 			[]int{1},
 			-1,
 		},
 		"ShiftJIS": {
-			"あ", sjis, -1,
+			[]rune("あ"), sjis, -1,
 			[]encoding.Encoding{latin1, sjis, utf8, utf16be},
 			[]string{"ISO_8859-1:1987", "Shift_JIS", "UTF-8", "UTF-16BE"},
 			[]int{1, 20, 26, 25},
 			1,
 		},
 		"NeedUnicode": {
-			"😀", nil, 1,
+			[]rune("😀"), nil, 1,
 			[]encoding.Encoding{latin1, utf8, utf16be},
 			[]string{"ISO_8859-1:1987", "UTF-8", "UTF-16BE"},
 			[]int{1, 26, 25},
 			-1,
 		},
 		"FNC1": {
-			"\u001dabc", nil, 0x1d,
+			[]rune("\u001dabc"), nil, 0x1d,
 			[]encoding.Encoding{latin1},
 			[]string{"ISO_8859-1:1987"},
 			[]int{1},
@@ -110,7 +110,7 @@ func TestNewECIEncoderSet(t *testing.T) {
 }
 
 func TestECIEncoderSet_MethodsFail(t *testing.T) {
-	es := NewECIEncoderSet("abc", nil, -1)
+	es := NewECIEncoderSet([]rune("abc"), nil, -1)
 
 	if n := es.GetCharsetName(2); n != "" {
 		t.Errorf("GetCharsetName must be empty: %q", n)
@@ -124,7 +124,7 @@ func TestECIEncoderSet_MethodsFail(t *testing.T) {
 }
 
 func TestECIEncoderSet_Encode(t *testing.T) {
-	es := NewECIEncoderSet("abc", nil, -1)
+	es := NewECIEncoderSet([]rune("abc"), nil, -1)
 	str := "Àabc"
 	expchar := []byte{0xc0}
 	expstr := []byte{0xc0, 0x61, 0x62, 0x63}
