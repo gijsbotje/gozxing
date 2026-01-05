@@ -1,73 +1,67 @@
 package encoder
 
 import (
-	"fmt"
 	"math"
 	"strings"
 
-	"github.com/makiuchi-d/gozxing/common"
 	"golang.org/x/text/encoding"
+
+	"github.com/makiuchi-d/gozxing"
+	"github.com/makiuchi-d/gozxing/common"
 )
 
-// Mode represents the encoding mode
-type Mode int
+// MinimalEncoderMode represents the encoding mode
+type MinimalEncoderMode int
 
 const (
-	ModeASCII Mode = iota
-	ModeC40
-	ModeTEXT
-	ModeX12
-	ModeEDF
-	ModeB256
+	MinimalEncoderModeASCII MinimalEncoderMode = iota
+	MinimalEncoderModeC40
+	MinimalEncoderModeTEXT
+	MinimalEncoderModeX12
+	MinimalEncoderModeEDF
+	MinimalEncoderModeB256
 )
 
-var c40Shift2Chars = []rune{'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
+var MinimalEncoder_c40Shift2Chars = []byte{'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
 	':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_'}
 
-func isExtendedASCII(ch rune, fnc1 int) bool {
-	return ch != rune(fnc1) && ch >= 128 && ch <= 255
+func MinimalEncoder_isExtendedASCII(ch byte, fnc1 int) bool {
+	return int(ch) != fnc1 && ch >= 128 && ch <= 255
 }
 
-func isInC40Shift1Set(ch rune) bool {
+func MinimalEncoder_isInC40Shift1Set(ch byte) bool {
 	return ch <= 31
 }
 
-func isInC40Shift2Set(ch rune, fnc1 int) bool {
-	for _, c40Shift2Char := range c40Shift2Chars {
+func MinimalEncoder_isInC40Shift2Set(ch byte, fnc1 int) bool {
+	for _, c40Shift2Char := range MinimalEncoder_c40Shift2Chars {
 		if c40Shift2Char == ch {
 			return true
 		}
 	}
-	return ch == rune(fnc1)
+	return int(ch) == fnc1
 }
 
-func isInTextShift1Set(ch rune) bool {
-	return isInC40Shift1Set(ch)
+func MinimalEncoder_isInTextShift1Set(ch byte) bool {
+	return MinimalEncoder_isInC40Shift1Set(ch)
 }
 
-func isInTextShift2Set(ch rune, fnc1 int) bool {
-	return isInC40Shift2Set(ch, fnc1)
+func MinimalEncoder_isInTextShift2Set(ch byte, fnc1 int) bool {
+	return MinimalEncoder_isInC40Shift2Set(ch, fnc1)
 }
 
-// MinimalEncoder Encoder that encodes minimally
-type MinimalEncoder struct{}
-
-// EncodeHighLevel Performs message encoding of a DataMatrix message
+// MinimalEncoder_EncodeHighLevel Performs message encoding of a DataMatrix message
 //
 // @param msg the message
 // @param priorityCharset The preferred encoding.Encoding. When the value of the argument is nil, the algorithm
-//
-//	chooses charsets that leads to a minimal representation. Otherwise the algorithm will use the priority
-//	charset to encode any character in the input that can be encoded by it if the charset is among the
-//	supported charsets.
-//
+// chooses charsets that leads to a minimal representation. Otherwise the algorithm will use the priority
+// charset to encode any character in the input that can be encoded by it if the charset is among the
+// supported charsets.
 // @param fnc1 denotes the character in the input that represents the FNC1 character or -1 if this is not a GS1
-//
-//	bar code. If the value is not -1 then a FNC1 is also prepended.
-//
+// bar code. If the value is not -1 then a FNC1 is also prepended.
 // @param shape requested shape.
 // @return the encoded message (the char values range from 0 to 255)
-func (m MinimalEncoder) EncodeHighLevel(msg string, priorityCharset encoding.Encoding, fnc1 int, shape SymbolShapeHint) ([]byte, error) {
+func MinimalEncoder_EncodeHighLevel(msg string, priorityCharset encoding.Encoding, fnc1 int, shape SymbolShapeHint) ([]byte, error) {
 	macroId := 0
 	if strings.HasPrefix(msg, HighLevelEncoder_MACRO_05_HEADER) && strings.HasSuffix(msg, HighLevelEncoder_MACRO_TRAILER) {
 		macroId = 5
@@ -76,30 +70,34 @@ func (m MinimalEncoder) EncodeHighLevel(msg string, priorityCharset encoding.Enc
 		macroId = 6
 		msg = msg[len(HighLevelEncoder_MACRO_06_HEADER) : len(msg)-2]
 	}
-	return encodeMinimal(msg, priorityCharset, fnc1, shape, macroId), nil
+	return MinimalEncoder_encode([]rune(msg), priorityCharset, fnc1, shape, macroId)
 }
 
-// encodeMinimal Encodes input minimally and returns an array of the codewords
+// MinimalEncoder_encode Encodes input minimally and returns an array of the codewords
 //
 // @param input The string to encode
 // @param priorityCharset The preferred encoding.Encoding. When the value of the argument is nil, the algorithm
-//
-//	chooses charsets that leads to a minimal representation. Otherwise the algorithm will use the priority
-//	charset to encode any character in the input that can be encoded by it if the charset is among the
-//	supported charsets.
-//
+// chooses charsets that leads to a minimal representation. Otherwise the algorithm will use the priority
+// charset to encode any character in the input that can be encoded by it if the charset is among the
+// supported charsets.
 // @param fnc1 denotes the character in the input that represents the FNC1 character or -1 if this is not a GS1
-//
-//	bar code. If the value is not -1 then a FNC1 is also prepended.
-//
+// bar code. If the value is not -1 then a FNC1 is also prepended.
 // @param shape requested shape.
 // @param macroId Prepends the specified macro function in case that a value of 5 or 6 is specified.
 // @return An array of bytes representing the codewords of a minimal encoding.
-func encodeMinimal(input string, priorityCharset encoding.Encoding, fnc1 int, shape SymbolShapeHint, macroId int) []byte {
-	return encodeMinimally(newInput(input, priorityCharset, fnc1, shape, macroId)).getBytes()
+func MinimalEncoder_encode(input []rune, priorityCharset encoding.Encoding, fnc1 int, shape SymbolShapeHint, macroId int) ([]byte, error) {
+	in, err := newMinimalEncoderInput(input, priorityCharset, fnc1, shape, macroId)
+	if err != nil {
+		return nil, err
+	}
+	re, err := MinimalEncoder_encodeMinimally(in)
+	if err != nil {
+		return nil, err
+	}
+	return re.getBytes(), nil
 }
 
-func addEdge(edges [][]*edge, edge *edge) {
+func MinimalEncoder_addEdge(edges [][]*MinimalEncoderEdge, edge *MinimalEncoderEdge) {
 	vertexIndex := edge.fromPosition + edge.characterLength
 	endModeOrdinal := int(edge.getEndMode())
 	if edges[vertexIndex][endModeOrdinal] == nil ||
@@ -108,35 +106,35 @@ func addEdge(edges [][]*edge, edge *edge) {
 	}
 }
 
-// getNumberOfC40Words returns the number of words in which the string starting at from can be encoded in c40 or text mode.
+// MinimalEncoder_getNumberOfC40Words returns the number of words in which the string starting at from can be encoded in c40 or text mode.
 // The number of characters encoded is returned in characterLength.
 // The number of characters encoded is also minimal in the sense that the algorithm stops as soon
 // as a character encoding fills a C40 word competely (three C40 values). An exception is at the
 // end of the string where two C40 values are allowed (according to the spec the third c40 value
 // is filled  with 0 (Shift 1) in this case).
-func getNumberOfC40Words(input *input, from int, c40 bool, characterLength *int) int {
+func MinimalEncoder_getNumberOfC40Words(input *MinimalEncoderInput, from int, c40 bool, characterLength *int) int {
 	thirdsCount := 0
-	for i := from; i < input.length(); i++ {
-		if isECI, _ := input.isECI(i); isECI {
+	for i := from; i < input.Length(); i++ {
+		if isECI, _ := input.IsECI(i); isECI {
 			*characterLength = 0
 			return 0
 		}
-		ci, _ := input.charAt(i)
-		if (c40 && isNativeC40Char(ci)) || (!c40 && isNativeTextChar(ci)) {
+		ci := input.CharAt(i)
+		if (c40 && HighLevelEncoder_isNativeC40(ci)) || (!c40 && HighLevelEncoder_isNativeText(ci)) {
 			thirdsCount++ // native
-		} else if !isExtendedASCII(ci, input.getFNC1Character()) {
+		} else if !MinimalEncoder_isExtendedASCII(ci, input.GetFNC1Character()) {
 			thirdsCount += 2 // shift
 		} else {
 			asciiValue := int(ci) & 0xff
-			if asciiValue >= 128 && ((c40 && isNativeC40Char(rune(asciiValue-128))) ||
-				(!c40 && isNativeTextChar(rune(asciiValue-128)))) {
+			if asciiValue >= 128 && ((c40 && HighLevelEncoder_isNativeC40(byte(asciiValue-128))) ||
+				(!c40 && HighLevelEncoder_isNativeText(byte(asciiValue-128)))) {
 				thirdsCount += 3 // shift, Upper shift
 			} else {
 				thirdsCount += 4 // shift, Upper shift, shift
 			}
 		}
 
-		if thirdsCount%3 == 0 || ((thirdsCount-2)%3 == 0 && i+1 == input.length()) {
+		if thirdsCount%3 == 0 || ((thirdsCount-2)%3 == 0 && i+1 == input.Length()) {
 			*characterLength = i - from + 1
 			return int(math.Ceil(float64(thirdsCount) / 3.0))
 		}
@@ -145,72 +143,39 @@ func getNumberOfC40Words(input *input, from int, c40 bool, characterLength *int)
 	return 0
 }
 
-func isNativeC40Char(ch rune) bool {
-	return (ch == ' ') || (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z')
-}
-
-func isNativeTextChar(ch rune) bool {
-	return (ch == ' ') || (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z')
-}
-
-func isNativeX12Char(ch rune) bool {
-	return isX12TermSepChar(ch) || (ch == ' ') || (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z')
-}
-
-func isX12TermSepChar(ch rune) bool {
-	return (ch == '\r') || // CR
-		(ch == '*') ||
-		(ch == '>')
-}
-
-func isNativeEDIFACTChar(ch rune) bool {
-	return ch >= ' ' && ch <= '^'
-}
-
-func isDigitChar(ch rune) bool {
-	return ch >= '0' && ch <= '9'
-}
-
-func addEdges(input *input, edges [][]*edge, from int, previous *edge) {
-	if isECI, _ := input.isECI(from); isECI {
-		addEdge(edges, newEdge(input, ModeASCII, from, 1, previous))
+func MinimalEncoder_addEdges(input *MinimalEncoderInput, edges [][]*MinimalEncoderEdge, from int, previous *MinimalEncoderEdge) {
+	if isECI, _ := input.IsECI(from); isECI {
+		MinimalEncoder_addEdge(edges, newMinimalEncoderEdge(input, MinimalEncoderModeASCII, from, 1, previous))
 		return
 	}
 
-	ch, _ := input.charAt(from)
-	if previous == nil || previous.getEndMode() != ModeEDF { // not possible to unlatch a full EDF edge to something else
-		if isDigitChar(ch) && input.haveNCharacters(from, 2) {
-			ch2, _ := input.charAt(from + 1)
-			if isDigitChar(ch2) {
-				// two digits ASCII encoded
-				addEdge(edges, newEdge(input, ModeASCII, from, 2, previous))
-			} else {
-				// one ASCII encoded character or an extended character via Upper Shift
-				addEdge(edges, newEdge(input, ModeASCII, from, 1, previous))
-			}
+	ch := input.CharAt(from)
+	if previous == nil || previous.getEndMode() != MinimalEncoderModeEDF { // not possible to unlatch a full EDF edge to something else
+		if HighLevelEncoder_isDigit(ch) && input.HaveNCharacters(from, 2) &&
+			HighLevelEncoder_isDigit(input.CharAt(from+1)) {
+			// two digits ASCII encoded
+			MinimalEncoder_addEdge(edges, newMinimalEncoderEdge(input, MinimalEncoderModeASCII, from, 2, previous))
 		} else {
 			// one ASCII encoded character or an extended character via Upper Shift
-			addEdge(edges, newEdge(input, ModeASCII, from, 1, previous))
+			MinimalEncoder_addEdge(edges, newMinimalEncoderEdge(input, MinimalEncoderModeASCII, from, 1, previous))
 		}
 
-		modes := []Mode{ModeC40, ModeTEXT}
+		modes := []MinimalEncoderMode{MinimalEncoderModeC40, MinimalEncoderModeTEXT}
 		for _, mode := range modes {
 			var characterLength int
-			if getNumberOfC40Words(input, from, mode == ModeC40, &characterLength) > 0 {
-				addEdge(edges, newEdge(input, mode, from, characterLength, previous))
+			if MinimalEncoder_getNumberOfC40Words(input, from, mode == MinimalEncoderModeC40, &characterLength) > 0 {
+				MinimalEncoder_addEdge(edges, newMinimalEncoderEdge(input, mode, from, characterLength, previous))
 			}
 		}
 
-		if input.haveNCharacters(from, 3) {
-			ch1, _ := input.charAt(from)
-			ch2, _ := input.charAt(from + 1)
-			ch3, _ := input.charAt(from + 2)
-			if isNativeX12Char(ch1) && isNativeX12Char(ch2) && isNativeX12Char(ch3) {
-				addEdge(edges, newEdge(input, ModeX12, from, 3, previous))
-			}
+		if input.HaveNCharacters(from, 3) &&
+			HighLevelEncoder_isNativeX12(input.CharAt(from)) &&
+			HighLevelEncoder_isNativeX12(input.CharAt(from+1)) &&
+			HighLevelEncoder_isNativeX12(input.CharAt(from+2)) {
+			MinimalEncoder_addEdge(edges, newMinimalEncoderEdge(input, MinimalEncoderModeX12, from, 3, previous))
 		}
 
-		addEdge(edges, newEdge(input, ModeB256, from, 1, previous))
+		MinimalEncoder_addEdge(edges, newMinimalEncoderEdge(input, MinimalEncoderModeB256, from, 1, previous))
 	}
 
 	// We create 4 EDF edges, with 1, 2 3 or 4 characters length. The fourth normally doesn't have a latch to ASCII
@@ -218,40 +183,32 @@ func addEdges(input *input, edges [][]*edge, from int, previous *edge) {
 	var i int
 	for i = 0; i < 3; i++ {
 		pos := from + i
-		if input.haveNCharacters(pos, 1) {
-			ch, _ := input.charAt(pos)
-			if isNativeEDIFACTChar(ch) {
-				addEdge(edges, newEdge(input, ModeEDF, from, i+1, previous))
-			} else {
-				break
-			}
+		if input.HaveNCharacters(pos, 1) && HighLevelEncoder_isNativeEDIFACT(input.CharAt(pos)) {
+			MinimalEncoder_addEdge(edges, newMinimalEncoderEdge(input, MinimalEncoderModeEDF, from, i+1, previous))
 		} else {
 			break
 		}
 	}
-	if i == 3 && input.haveNCharacters(from, 4) {
-		ch, _ := input.charAt(from + 3)
-		if isNativeEDIFACTChar(ch) {
-			addEdge(edges, newEdge(input, ModeEDF, from, 4, previous))
-		}
+	if i == 3 && input.HaveNCharacters(from, 4) && HighLevelEncoder_isNativeEDIFACT(input.CharAt(from+3)) {
+		MinimalEncoder_addEdge(edges, newMinimalEncoderEdge(input, MinimalEncoderModeEDF, from, 4, previous))
 	}
 }
 
-func encodeMinimally(input *input) *result {
-	inputLength := input.length()
+func MinimalEncoder_encodeMinimally(input *MinimalEncoderInput) (*MinimalEncoderResult, error) {
+	inputLength := input.Length()
 
 	// Array that represents vertices. There is a vertex for every character and mode.
 	// The last dimension in the array below encodes the 6 modes ASCII, C40, TEXT, X12, EDF and B256
-	edges := make([][]*edge, inputLength+1)
+	edges := make([][]*MinimalEncoderEdge, inputLength+1)
 	for i := range edges {
-		edges[i] = make([]*edge, 6)
+		edges[i] = make([]*MinimalEncoderEdge, 6)
 	}
-	addEdges(input, edges, 0, nil)
+	MinimalEncoder_addEdges(input, edges, 0, nil)
 
 	for i := 1; i <= inputLength; i++ {
 		for j := 0; j < 6; j++ {
 			if edges[i][j] != nil && i < inputLength {
-				addEdges(input, edges, i, edges[i][j])
+				MinimalEncoder_addEdges(input, edges, i, edges[i][j])
 			}
 		}
 		// optimize memory by removing edges that have been passed.
@@ -261,7 +218,7 @@ func encodeMinimally(input *input) *result {
 	}
 
 	minimalJ := -1
-	minimalSize := int(^uint(0) >> 1) // MaxInt
+	minimalSize := math.MaxInt
 	for j := 0; j < 6; j++ {
 		if edges[inputLength][j] != nil {
 			edge := edges[inputLength][j]
@@ -277,33 +234,47 @@ func encodeMinimally(input *input) *result {
 	}
 
 	if minimalJ < 0 {
-		panic(fmt.Sprintf("Failed to encode \"%s\"", input.String()))
+		return nil, gozxing.NewWriterException("IllegalStateException: Failed to encode \"%s\"", input)
 	}
-	return newResult(edges[inputLength][minimalJ])
+	return newMinimalEncoderResult(edges[inputLength][minimalJ]), nil
 }
 
-type edge struct {
-	input           *input
-	mode            Mode // the mode at the start of this edge.
+type MinimalEncoderEdge struct {
+	input           *MinimalEncoderInput
+	mode            MinimalEncoderMode // the mode at the start of this edge.
 	fromPosition    int
 	characterLength int
-	previous        *edge
+	previous        *MinimalEncoderEdge
 	cachedTotalSize int
 }
 
 var (
-	allCodewordCapacities         = []int{3, 5, 8, 10, 12, 16, 18, 22, 30, 32, 36, 44, 49, 62, 86, 114, 144, 174, 204, 280, 368, 456, 576, 696, 816, 1050, 1304, 1558}
-	squareCodewordCapacities      = []int{3, 5, 8, 12, 18, 22, 30, 36, 44, 62, 86, 114, 144, 174, 204, 280, 368, 456, 576, 696, 816, 1050, 1304, 1558}
-	rectangularCodewordCapacities = []int{5, 10, 16, 33, 32, 49}
+	minimalEncoderEdge_allCodewordCapacities = []int{
+		3, 5, 8, 10, 12, 16, 18, 22, 30, 32, 36, 44, 49, 62, 86, 114,
+		144, 174, 204, 280, 368, 456, 576, 696, 816, 1050, 1304, 1558,
+	}
+	minimalEncoderEdge_squareCodewordCapacities = []int{
+		3, 5, 8, 12, 18, 22, 30, 36, 44, 62, 86, 114, 144, 174, 204,
+		280, 368, 456, 576, 696, 816, 1050, 1304, 1558,
+	}
+	minimalEncoderEdge_rectangularCodewordCapacities = []int{5, 10, 16, 33, 32, 49}
 )
 
-func newEdge(input *input, mode Mode, fromPosition int, characterLength int, previous *edge) *edge {
+func newMinimalEncoderEdge(input *MinimalEncoderInput, mode MinimalEncoderMode, fromPosition int, characterLength int, previous *MinimalEncoderEdge) *MinimalEncoderEdge {
+	this := &MinimalEncoderEdge{
+		input:           input,
+		mode:            mode,
+		fromPosition:    fromPosition,
+		characterLength: characterLength,
+		previous:        previous,
+	}
+
 	size := 0
 	if previous != nil {
 		size = previous.cachedTotalSize
 	}
 
-	previousMode := getPreviousMode(previous)
+	previousMode := previous.getPreviousMode()
 
 	// Switching modes
 	// ASCII -> C40: latch 230
@@ -318,86 +289,82 @@ func newEdge(input *input, mode Mode, fromPosition int, characterLength int, pre
 	// c1,c2,c3,Unlatch character
 	// B256 -> ASCII: without latch after n bytes
 	switch mode {
-	case ModeASCII:
+	case MinimalEncoderModeASCII:
 		size++
-		if isECI, _ := input.isECI(fromPosition); isECI {
+		if isECI, _ := input.IsECI(fromPosition); isECI || MinimalEncoder_isExtendedASCII(input.CharAt(fromPosition), input.GetFNC1Character()) {
 			size++
-		} else {
-			ch, _ := input.charAt(fromPosition)
-			if isExtendedASCII(ch, input.getFNC1Character()) {
-				size++
-			}
 		}
-		if previousMode == ModeC40 || previousMode == ModeTEXT || previousMode == ModeX12 {
+		if previousMode == MinimalEncoderModeC40 ||
+			previousMode == MinimalEncoderModeTEXT ||
+			previousMode == MinimalEncoderModeX12 {
 			size++ // unlatch 254 to ASCII
 		}
-	case ModeB256:
+	case MinimalEncoderModeB256:
 		size++
-		if previousMode != ModeB256 {
+		if previousMode != MinimalEncoderModeB256 {
 			size++ // byte count
-		} else if getB256Size(previous) == 250 {
+		} else if this.getB256Size() == 250 {
 			size++ // extra byte count
 		}
-		if previousMode == ModeASCII {
+		if previousMode == MinimalEncoderModeASCII {
 			size++ // latch to B256
-		} else if previousMode == ModeC40 || previousMode == ModeTEXT || previousMode == ModeX12 {
+		} else if previousMode == MinimalEncoderModeC40 ||
+			previousMode == MinimalEncoderModeTEXT ||
+			previousMode == MinimalEncoderModeX12 {
 			size += 2 // unlatch to ASCII, latch to B256
 		}
-	case ModeC40, ModeTEXT, ModeX12:
-		if mode == ModeX12 {
+	case MinimalEncoderModeC40, MinimalEncoderModeTEXT, MinimalEncoderModeX12:
+		if mode == MinimalEncoderModeX12 {
 			size += 2
 		} else {
 			var charLen int
-			size += getNumberOfC40Words(input, fromPosition, mode == ModeC40, &charLen) * 2
+			size += MinimalEncoder_getNumberOfC40Words(input, fromPosition, mode == MinimalEncoderModeC40, &charLen) * 2
 		}
 
-		if previousMode == ModeASCII || previousMode == ModeB256 {
+		if previousMode == MinimalEncoderModeASCII || previousMode == MinimalEncoderModeB256 {
 			size++ // additional byte for latch from ASCII to this mode
-		} else if previousMode != mode && (previousMode == ModeC40 || previousMode == ModeTEXT || previousMode == ModeX12) {
+		} else if previousMode != mode && (previousMode == MinimalEncoderModeC40 ||
+			previousMode == MinimalEncoderModeTEXT ||
+			previousMode == MinimalEncoderModeX12) {
 			size += 2 // unlatch 254 to ASCII followed by latch to this mode
 		}
-	case ModeEDF:
+	case MinimalEncoderModeEDF:
 		size += 3
-		if previousMode == ModeASCII || previousMode == ModeB256 {
+		if previousMode == MinimalEncoderModeASCII || previousMode == MinimalEncoderModeB256 {
 			size++ // additional byte for latch from ASCII to this mode
-		} else if previousMode == ModeC40 || previousMode == ModeTEXT || previousMode == ModeX12 {
+		} else if previousMode == MinimalEncoderModeC40 ||
+			previousMode == MinimalEncoderModeASCII ||
+			previousMode == MinimalEncoderModeX12 {
 			size += 2 // unlatch 254 to ASCII followed by latch to this mode
 		}
 	}
-
-	return &edge{
-		input:           input,
-		mode:            mode,
-		fromPosition:    fromPosition,
-		characterLength: characterLength,
-		previous:        previous,
-		cachedTotalSize: size,
-	}
+	this.cachedTotalSize = size
+	return this
 }
 
 // getB256Size does not count beyond 250
-func getB256Size(e *edge) int {
+func (e *MinimalEncoderEdge) getB256Size() int {
 	cnt := 0
 	current := e
-	for current != nil && current.mode == ModeB256 && cnt <= 250 {
+	for current != nil && current.mode == MinimalEncoderModeB256 && cnt <= 250 {
 		cnt++
 		current = current.previous
 	}
 	return cnt
 }
 
-func getPreviousStartMode(e *edge) Mode {
-	if e == nil {
-		return ModeASCII
+func (e *MinimalEncoderEdge) getPreviousStartMode() MinimalEncoderMode {
+	if e.previous == nil {
+		return MinimalEncoderModeASCII
 	}
-	return e.mode
+	return e.previous.mode
 }
 
-func getPreviousMode(e *edge) Mode {
-	if e == nil {
-		return ModeASCII
+func (e *MinimalEncoderEdge) getPreviousMode() MinimalEncoderMode {
+	if e.previous == nil {
+		return MinimalEncoderModeASCII
 	}
-	return e.getEndMode()
+	return e.previous.getEndMode()
 }
 
 // getEndMode Returns ModeASCII in case that:
@@ -405,77 +372,74 @@ func getPreviousMode(e *edge) Mode {
 //     ASCII bytes.
 //   - Mode is C40, TEXT or X12 and the remaining characters can be encoded in at most 1 ASCII byte.
 //     Returns mode in all other cases.
-func (e *edge) getEndMode() Mode {
-	if e.mode == ModeEDF {
+func (e *MinimalEncoderEdge) getEndMode() MinimalEncoderMode {
+	if e.mode == MinimalEncoderModeEDF {
 		if e.characterLength < 4 {
-			return ModeASCII
+			return MinimalEncoderModeASCII
 		}
 		lastASCII := e.getLastASCII() // see 5.2.8.2 EDIFACT encodation Rules
 		if lastASCII > 0 && e.getCodewordsRemaining(e.cachedTotalSize+lastASCII) <= 2-lastASCII {
-			return ModeASCII
+			return MinimalEncoderModeASCII
 		}
 	}
-	if e.mode == ModeC40 || e.mode == ModeTEXT || e.mode == ModeX12 {
+	if e.mode == MinimalEncoderModeC40 ||
+		e.mode == MinimalEncoderModeTEXT ||
+		e.mode == MinimalEncoderModeX12 {
+
 		// see 5.2.5.2 C40 encodation rules and 5.2.7.2 ANSI X12 encodation rules
-		if e.fromPosition+e.characterLength >= e.input.length() && e.getCodewordsRemaining(e.cachedTotalSize) == 0 {
-			return ModeASCII
+		if e.fromPosition+e.characterLength >= e.input.Length() && e.getCodewordsRemaining(e.cachedTotalSize) == 0 {
+			return MinimalEncoderModeASCII
 		}
 		lastASCII := e.getLastASCII()
 		if lastASCII == 1 && e.getCodewordsRemaining(e.cachedTotalSize+1) == 0 {
-			return ModeASCII
+			return MinimalEncoderModeASCII
 		}
 	}
 	return e.mode
 }
 
-func (e *edge) getMode() Mode {
+func (e *MinimalEncoderEdge) getMode() MinimalEncoderMode {
 	return e.mode
 }
 
 // getLastASCII Peeks ahead and returns 1 if the postfix consists of exactly two digits, 2 if the postfix consists of exactly
 // two consecutive digits and a non extended character or of 4 digits.
 // Returns 0 in any other case
-func (e *edge) getLastASCII() int {
-	length := e.input.length()
+func (e *MinimalEncoderEdge) getLastASCII() int {
+	length := e.input.Length()
 	from := e.fromPosition + e.characterLength
 	if length-from > 4 || from >= length {
 		return 0
 	}
 	if length-from == 1 {
-		ch, _ := e.input.charAt(from)
-		if isExtendedASCII(ch, e.input.getFNC1Character()) {
+		if MinimalEncoder_isExtendedASCII(e.input.CharAt(from), e.input.GetFNC1Character()) {
 			return 0
 		}
 		return 1
 	}
 	if length-from == 2 {
-		ch1, _ := e.input.charAt(from)
-		ch2, _ := e.input.charAt(from + 1)
-		if isExtendedASCII(ch1, e.input.getFNC1Character()) || isExtendedASCII(ch2, e.input.getFNC1Character()) {
+		if MinimalEncoder_isExtendedASCII(e.input.CharAt(from), e.input.GetFNC1Character()) ||
+			MinimalEncoder_isExtendedASCII(e.input.CharAt(from+1), e.input.GetFNC1Character()) {
 			return 0
 		}
-		if isDigitChar(ch1) && isDigitChar(ch2) {
+		if HighLevelEncoder_isDigit(e.input.CharAt(from)) && HighLevelEncoder_isDigit(e.input.CharAt(from+1)) {
 			return 1
 		}
 		return 2
 	}
 	if length-from == 3 {
-		ch1, _ := e.input.charAt(from)
-		ch2, _ := e.input.charAt(from + 1)
-		ch3, _ := e.input.charAt(from + 2)
-		if isDigitChar(ch1) && isDigitChar(ch2) && !isExtendedASCII(ch3, e.input.getFNC1Character()) {
+		if HighLevelEncoder_isDigit(e.input.CharAt(from)) && HighLevelEncoder_isDigit(e.input.CharAt(from+1)) &&
+			!MinimalEncoder_isExtendedASCII(e.input.CharAt(from+2), e.input.GetFNC1Character()) {
 			return 2
 		}
-		if isDigitChar(ch2) && isDigitChar(ch3) && !isExtendedASCII(ch1, e.input.getFNC1Character()) {
+		if HighLevelEncoder_isDigit(e.input.CharAt(from+1)) && HighLevelEncoder_isDigit(e.input.CharAt(from+2)) &&
+			!MinimalEncoder_isExtendedASCII(e.input.CharAt(from), e.input.GetFNC1Character()) {
 			return 2
 		}
 		return 0
 	}
-	ch1, _ := e.input.charAt(from)
-	ch2, _ := e.input.charAt(from + 1)
-	ch3, _ := e.input.charAt(from + 2)
-	ch4, _ := e.input.charAt(from + 3)
-	if isDigitChar(ch1) && isDigitChar(ch2) && isDigitChar(ch3) && isDigitChar(ch4) {
+	if HighLevelEncoder_isDigit(e.input.CharAt(from)) && HighLevelEncoder_isDigit(e.input.CharAt(from+1)) &&
+		HighLevelEncoder_isDigit(e.input.CharAt(from+2)) && HighLevelEncoder_isDigit(e.input.CharAt(from+3)) {
 		return 2
 	}
 	return 0
@@ -483,50 +447,50 @@ func (e *edge) getLastASCII() int {
 
 // getMinSymbolSize Returns the capacity in codewords of the smallest symbol that has enough capacity to fit the given minimal
 // number of codewords.
-func (e *edge) getMinSymbolSize(minimum int) int {
+func (e *MinimalEncoderEdge) getMinSymbolSize(minimum int) int {
 	switch e.input.getShapeHint() {
 	case SymbolShapeHint_FORCE_SQUARE:
-		for _, capacity := range squareCodewordCapacities {
+		for _, capacity := range minimalEncoderEdge_squareCodewordCapacities {
 			if capacity >= minimum {
 				return capacity
 			}
 		}
 	case SymbolShapeHint_FORCE_RECTANGLE:
-		for _, capacity := range rectangularCodewordCapacities {
+		for _, capacity := range minimalEncoderEdge_rectangularCodewordCapacities {
 			if capacity >= minimum {
 				return capacity
 			}
 		}
 	}
-	for _, capacity := range allCodewordCapacities {
+	for _, capacity := range minimalEncoderEdge_allCodewordCapacities {
 		if capacity >= minimum {
 			return capacity
 		}
 	}
-	return allCodewordCapacities[len(allCodewordCapacities)-1]
+	return minimalEncoderEdge_allCodewordCapacities[len(minimalEncoderEdge_allCodewordCapacities)-1]
 }
 
 // getCodewordsRemaining Returns the remaining capacity in codewords of the smallest symbol that has enough capacity to fit the given
 // minimal number of codewords.
-func (e *edge) getCodewordsRemaining(minimum int) int {
+func (e *MinimalEncoderEdge) getCodewordsRemaining(minimum int) int {
 	return e.getMinSymbolSize(minimum) - minimum
 }
 
-func edgeGetBytes(c int) []byte {
+func MinimalEncoderEdge_getBytes(c int) []byte {
 	return []byte{byte(c)}
 }
 
-func edgeGetBytes2(c1, c2 int) []byte {
+func MinimalEncoderEdge_getBytes2(c1, c2 int) []byte {
 	return []byte{byte(c1), byte(c2)}
 }
 
-func setC40Word(bytes []byte, offset int, c1, c2, c3 int) {
+func MinimalEncoderEdge_setC40Word(bytes []byte, offset int, c1, c2, c3 int) {
 	val16 := (1600 * (c1 & 0xff)) + (40 * (c2 & 0xff)) + (c3 & 0xff) + 1
 	bytes[offset] = byte(val16 / 256)
 	bytes[offset+1] = byte(val16 % 256)
 }
 
-func getX12Value(c rune) int {
+func MinimalEncoderEdge_getX12Value(c byte) int {
 	if c == 13 {
 		return 0
 	}
@@ -548,29 +512,29 @@ func getX12Value(c rune) int {
 	return int(c)
 }
 
-func (e *edge) getX12Words() []byte {
+func (e *MinimalEncoderEdge) getX12Words() []byte {
 	result := make([]byte, e.characterLength/3*2)
 	for i := 0; i < len(result); i += 2 {
-		ch1, _ := e.input.charAt(e.fromPosition + i/2*3)
-		ch2, _ := e.input.charAt(e.fromPosition + i/2*3 + 1)
-		ch3, _ := e.input.charAt(e.fromPosition + i/2*3 + 2)
-		setC40Word(result, i, getX12Value(ch1), getX12Value(ch2), getX12Value(ch3))
+		MinimalEncoderEdge_setC40Word(result, i,
+			MinimalEncoderEdge_getX12Value(e.input.CharAt(e.fromPosition+i/2*3)),
+			MinimalEncoderEdge_getX12Value(e.input.CharAt(e.fromPosition+i/2*3+1)),
+			MinimalEncoderEdge_getX12Value(e.input.CharAt(e.fromPosition+i/2*3+2)))
 	}
 	return result
 }
 
-func getShiftValue(c rune, c40 bool, fnc1 int) int {
-	if (c40 && isInC40Shift1Set(c)) || (!c40 && isInTextShift1Set(c)) {
+func MinimalEncoderEdge_getShiftValue(c byte, c40 bool, fnc1 int) int {
+	if (c40 && MinimalEncoder_isInC40Shift1Set(c)) || (!c40 && MinimalEncoder_isInTextShift1Set(c)) {
 		return 0
 	}
-	if (c40 && isInC40Shift2Set(c, fnc1)) || (!c40 && isInTextShift2Set(c, fnc1)) {
+	if (c40 && MinimalEncoder_isInC40Shift2Set(c, fnc1)) || (!c40 && MinimalEncoder_isInTextShift2Set(c, fnc1)) {
 		return 1
 	}
 	return 2
 }
 
-func getC40Value(c40 bool, setIndex int, c rune, fnc1 int) int {
-	if c == rune(fnc1) {
+func MinimalEncoderEdge_getC40Value(c40 bool, setIndex int, c byte, fnc1 int) int {
+	if int(c) == fnc1 {
 		return 27
 	}
 	if c40 {
@@ -640,28 +604,29 @@ func getC40Value(c40 bool, setIndex int, c rune, fnc1 int) int {
 	}
 }
 
-func (e *edge) getC40Words(c40 bool, fnc1 int) []byte {
+func (e *MinimalEncoderEdge) getC40Words(c40 bool, fnc1 int) []byte {
 	c40Values := make([]byte, 0)
 	for i := 0; i < e.characterLength; i++ {
-		ci, _ := e.input.charAt(e.fromPosition + i)
-		if (c40 && isNativeC40Char(ci)) || (!c40 && isNativeTextChar(ci)) {
-			c40Values = append(c40Values, byte(getC40Value(c40, 0, ci, fnc1)))
-		} else if !isExtendedASCII(ci, fnc1) {
-			shiftValue := getShiftValue(ci, c40, fnc1)
+		ci := e.input.CharAt(e.fromPosition + i)
+		if (c40 && HighLevelEncoder_isNativeC40(ci)) || (!c40 && HighLevelEncoder_isNativeText(ci)) {
+			c40Values = append(c40Values, byte(MinimalEncoderEdge_getC40Value(c40, 0, ci, fnc1)))
+		} else if !MinimalEncoder_isExtendedASCII(ci, fnc1) {
+			shiftValue := MinimalEncoderEdge_getShiftValue(ci, c40, fnc1)
 			c40Values = append(c40Values, byte(shiftValue)) // Shift[123]
-			c40Values = append(c40Values, byte(getC40Value(c40, shiftValue, ci, fnc1)))
+			c40Values = append(c40Values, byte(MinimalEncoderEdge_getC40Value(c40, shiftValue, ci, fnc1)))
 		} else {
-			asciiValue := rune((int(ci) & 0xff) - 128)
-			if (c40 && isNativeC40Char(asciiValue)) || (!c40 && isNativeTextChar(asciiValue)) {
+			asciiValue := byte((int(ci) & 0xff) - 128)
+			if (c40 && HighLevelEncoder_isNativeC40(asciiValue)) ||
+				!c40 && HighLevelEncoder_isNativeText(asciiValue) {
 				c40Values = append(c40Values, 1)  // Shift 2
 				c40Values = append(c40Values, 30) // Upper Shift
-				c40Values = append(c40Values, byte(getC40Value(c40, 0, asciiValue, fnc1)))
+				c40Values = append(c40Values, byte(MinimalEncoderEdge_getC40Value(c40, 0, asciiValue, fnc1)))
 			} else {
 				c40Values = append(c40Values, 1)  // Shift 2
 				c40Values = append(c40Values, 30) // Upper Shift
-				shiftValue := getShiftValue(asciiValue, c40, fnc1)
+				shiftValue := MinimalEncoderEdge_getShiftValue(asciiValue, c40, fnc1)
 				c40Values = append(c40Values, byte(shiftValue)) // Shift[123]
-				c40Values = append(c40Values, byte(getC40Value(c40, shiftValue, asciiValue, fnc1)))
+				c40Values = append(c40Values, byte(MinimalEncoderEdge_getC40Value(c40, shiftValue, asciiValue, fnc1)))
 			}
 		}
 	}
@@ -674,26 +639,25 @@ func (e *edge) getC40Words(c40 bool, fnc1 int) []byte {
 	result := make([]byte, len(c40Values)/3*2)
 	byteIndex := 0
 	for i := 0; i < len(c40Values); i += 3 {
-		setC40Word(result, byteIndex, int(c40Values[i]&0xff), int(c40Values[i+1]&0xff), int(c40Values[i+2]&0xff))
+		MinimalEncoderEdge_setC40Word(result, byteIndex, int(c40Values[i]&0xff), int(c40Values[i+1]&0xff), int(c40Values[i+2]&0xff))
 		byteIndex += 2
 	}
 	return result
 }
 
-func (e *edge) getEDFBytes() []byte {
+func (e *MinimalEncoderEdge) getEDFBytes() []byte {
 	numberOfThirds := int(math.Ceil(float64(e.characterLength) / 4.0))
 	result := make([]byte, numberOfThirds*3)
 	pos := e.fromPosition
 	endPos := e.fromPosition + e.characterLength - 1
-	if endPos > e.input.length()-1 {
-		endPos = e.input.length() - 1
+	if endPos > e.input.Length()-1 {
+		endPos = e.input.Length() - 1
 	}
-	for i := 0; i < numberOfThirds; i++ {
+	for i := 0; i < numberOfThirds; i += 3 {
 		edfValues := make([]int, 4)
 		for j := 0; j < 4; j++ {
 			if pos <= endPos {
-				ch, _ := e.input.charAt(pos)
-				edfValues[j] = int(ch) & 0x3f
+				edfValues[j] = int(e.input.CharAt(pos)) & 0x3f
 				pos++
 			} else {
 				if pos == endPos+1 {
@@ -704,47 +668,46 @@ func (e *edge) getEDFBytes() []byte {
 			}
 		}
 		val24 := edfValues[0]<<18 | edfValues[1]<<12 | edfValues[2]<<6 | edfValues[3]
-		result[i*3] = byte((val24 >> 16) & 0xff)
-		result[i*3+1] = byte((val24 >> 8) & 0xff)
-		result[i*3+2] = byte(val24 & 0xff)
+		result[i] = byte((val24 >> 16) & 0xff)
+		result[i+1] = byte((val24 >> 8) & 0xff)
+		result[i+2] = byte(val24 & 0xff)
 	}
 	return result
 }
 
-func (e *edge) getLatchBytes() []byte {
-	previousMode := getPreviousMode(e.previous)
-	switch previousMode {
-	case ModeASCII, ModeB256: // after B256 ends (via length) we are back to ASCII
+func (e *MinimalEncoderEdge) getLatchBytes() []byte {
+	switch e.getPreviousMode() {
+	case MinimalEncoderModeASCII, MinimalEncoderModeB256: // after B256 ends (via length) we are back to ASCII
 		switch e.mode {
-		case ModeB256:
-			return edgeGetBytes(231)
-		case ModeC40:
-			return edgeGetBytes(230)
-		case ModeTEXT:
-			return edgeGetBytes(239)
-		case ModeX12:
-			return edgeGetBytes(238)
-		case ModeEDF:
-			return edgeGetBytes(240)
+		case MinimalEncoderModeB256:
+			return MinimalEncoderEdge_getBytes(231)
+		case MinimalEncoderModeC40:
+			return MinimalEncoderEdge_getBytes(230)
+		case MinimalEncoderModeTEXT:
+			return MinimalEncoderEdge_getBytes(239)
+		case MinimalEncoderModeX12:
+			return MinimalEncoderEdge_getBytes(238)
+		case MinimalEncoderModeEDF:
+			return MinimalEncoderEdge_getBytes(240)
 		}
-	case ModeC40, ModeTEXT, ModeX12:
-		if e.mode != previousMode {
+	case MinimalEncoderModeC40, MinimalEncoderModeTEXT, MinimalEncoderModeX12:
+		if e.mode != e.getPreviousMode() {
 			switch e.mode {
-			case ModeASCII:
-				return edgeGetBytes(254)
-			case ModeB256:
-				return edgeGetBytes2(254, 231)
-			case ModeC40:
-				return edgeGetBytes2(254, 230)
-			case ModeTEXT:
-				return edgeGetBytes2(254, 239)
-			case ModeX12:
-				return edgeGetBytes2(254, 238)
-			case ModeEDF:
-				return edgeGetBytes2(254, 240)
+			case MinimalEncoderModeASCII:
+				return MinimalEncoderEdge_getBytes(254)
+			case MinimalEncoderModeB256:
+				return MinimalEncoderEdge_getBytes2(254, 231)
+			case MinimalEncoderModeC40:
+				return MinimalEncoderEdge_getBytes2(254, 230)
+			case MinimalEncoderModeTEXT:
+				return MinimalEncoderEdge_getBytes2(254, 239)
+			case MinimalEncoderModeX12:
+				return MinimalEncoderEdge_getBytes2(254, 238)
+			case MinimalEncoderModeEDF:
+				return MinimalEncoderEdge_getBytes2(254, 240)
 			}
 		}
-	case ModeEDF:
+	case MinimalEncoderModeEDF:
 		// The rightmost EDIFACT edge always contains an unlatch character
 		break
 	}
@@ -752,62 +715,60 @@ func (e *edge) getLatchBytes() []byte {
 }
 
 // getDataBytes Important: The function does not return the length bytes (one or two) in case of B256 encoding
-func (e *edge) getDataBytes() []byte {
+func (e *MinimalEncoderEdge) getDataBytes() []byte {
 	switch e.mode {
-	case ModeASCII:
-		if isECI, _ := e.input.isECI(e.fromPosition); isECI {
-			eciValue, _ := e.input.getECIValue(e.fromPosition)
-			return edgeGetBytes2(241, eciValue+1)
+	case MinimalEncoderModeASCII:
+		if isECI, _ := e.input.IsECI(e.fromPosition); isECI {
+			eciValue, _ := e.input.GetECIValue(e.fromPosition)
+			return MinimalEncoderEdge_getBytes2(241, eciValue+1)
 		}
-		ch, _ := e.input.charAt(e.fromPosition)
-		if isExtendedASCII(ch, e.input.getFNC1Character()) {
-			return edgeGetBytes2(235, int(ch)-127)
+		if MinimalEncoder_isExtendedASCII(e.input.CharAt(e.fromPosition), e.input.GetFNC1Character()) {
+			return MinimalEncoderEdge_getBytes2(235, int(e.input.CharAt(e.fromPosition))-127)
 		}
 		if e.characterLength == 2 {
-			ch1, _ := e.input.charAt(e.fromPosition)
-			ch2, _ := e.input.charAt(e.fromPosition + 1)
-			return edgeGetBytes((int(ch1)-'0')*10 + int(ch2) - '0' + 130)
+			return MinimalEncoderEdge_getBytes((int(e.input.CharAt(e.fromPosition))-'0')*10 + int(e.input.CharAt(e.fromPosition+1)) - '0' + 130)
 		}
-		if isFNC1, _ := e.input.isFNC1(e.fromPosition); isFNC1 {
-			return edgeGetBytes(232)
+		if isFNC1, _ := e.input.IsFNC1(e.fromPosition); isFNC1 {
+			return MinimalEncoderEdge_getBytes(232)
 		}
-		ch, _ = e.input.charAt(e.fromPosition)
-		return edgeGetBytes(int(ch) + 1)
-	case ModeB256:
-		ch, _ := e.input.charAt(e.fromPosition)
-		return edgeGetBytes(int(ch))
-	case ModeC40:
-		return e.getC40Words(true, e.input.getFNC1Character())
-	case ModeTEXT:
-		return e.getC40Words(false, e.input.getFNC1Character())
-	case ModeX12:
+		return MinimalEncoderEdge_getBytes(int(e.input.CharAt(e.fromPosition)) + 1)
+	case MinimalEncoderModeB256:
+		return MinimalEncoderEdge_getBytes(int(e.input.CharAt(e.fromPosition)))
+	case MinimalEncoderModeC40:
+		return e.getC40Words(true, e.input.GetFNC1Character())
+	case MinimalEncoderModeTEXT:
+		return e.getC40Words(false, e.input.GetFNC1Character())
+	case MinimalEncoderModeX12:
 		return e.getX12Words()
-	case ModeEDF:
+	case MinimalEncoderModeEDF:
 		return e.getEDFBytes()
 	}
 	return []byte{}
 }
 
-type result struct {
+type MinimalEncoderResult struct {
 	bytes []byte
 }
 
-func newResult(solution *edge) *result {
+// ここまで書き換え済み
+func newMinimalEncoderResult(solution *MinimalEncoderEdge) *MinimalEncoderResult {
 	input := solution.input
 	size := 0
 	bytesAL := make([]byte, 0)
 	randomizePostfixLength := make([]int, 0)
 	randomizeLengths := make([]int, 0)
-	if (solution.mode == ModeC40 || solution.mode == ModeTEXT || solution.mode == ModeX12) &&
-		solution.getEndMode() != ModeASCII {
-		size += prepend(edgeGetBytes(254), &bytesAL)
+	if (solution.mode == MinimalEncoderModeC40 ||
+		solution.mode == MinimalEncoderModeTEXT ||
+		solution.mode == MinimalEncoderModeX12) &&
+		solution.getEndMode() != MinimalEncoderModeASCII {
+		size += MinimalEncoderResult_prepend(MinimalEncoderEdge_getBytes(254), &bytesAL)
 	}
 	current := solution
 	for current != nil {
-		size += prepend(current.getDataBytes(), &bytesAL)
+		size += MinimalEncoderResult_prepend(current.getDataBytes(), &bytesAL)
 
-		if current.previous == nil || getPreviousStartMode(current.previous) != current.getMode() {
-			if current.getMode() == ModeB256 {
+		if current.previous == nil || current.getPreviousStartMode() != current.getMode() {
+			if current.getMode() == MinimalEncoderModeB256 {
 				if size <= 249 {
 					bytesAL = append([]byte{byte(size)}, bytesAL...)
 					size++
@@ -818,23 +779,23 @@ func newResult(solution *edge) *result {
 				randomizePostfixLength = append(randomizePostfixLength, len(bytesAL))
 				randomizeLengths = append(randomizeLengths, size)
 			}
-			prepend(current.getLatchBytes(), &bytesAL)
+			MinimalEncoderResult_prepend(current.getLatchBytes(), &bytesAL)
 			size = 0
 		}
 
 		current = current.previous
 	}
 	if input.getMacroId() == 5 {
-		size += prepend(edgeGetBytes(236), &bytesAL)
+		size += MinimalEncoderResult_prepend(MinimalEncoderEdge_getBytes(236), &bytesAL)
 	} else if input.getMacroId() == 6 {
-		size += prepend(edgeGetBytes(237), &bytesAL)
+		size += MinimalEncoderResult_prepend(MinimalEncoderEdge_getBytes(237), &bytesAL)
 	}
 
-	if input.getFNC1Character() > 0 {
-		size += prepend(edgeGetBytes(232), &bytesAL)
+	if input.GetFNC1Character() > 0 {
+		size += MinimalEncoderResult_prepend(MinimalEncoderEdge_getBytes(232), &bytesAL)
 	}
 	for i := 0; i < len(randomizePostfixLength); i++ {
-		applyRandomPattern(&bytesAL, len(bytesAL)-randomizePostfixLength[i], randomizeLengths[i])
+		MinimalEncoderResult_applyRandomPattern(&bytesAL, len(bytesAL)-randomizePostfixLength[i], randomizeLengths[i])
 	}
 	// add padding
 	capacity := solution.getMinSymbolSize(len(bytesAL))
@@ -842,20 +803,29 @@ func newResult(solution *edge) *result {
 		bytesAL = append(bytesAL, 129)
 	}
 	for len(bytesAL) < capacity {
-		bytesAL = append(bytesAL, byte(randomize253State(len(bytesAL)+1)))
+		bytesAL = append(bytesAL, byte(MinimalEncoderResult_randomize253State(len(bytesAL)+1)))
 	}
 
-	return &result{bytes: bytesAL}
+	return &MinimalEncoderResult{bytes: bytesAL}
 }
 
-func prepend(bytes []byte, into *[]byte) int {
+func MinimalEncoderResult_prepend(bytes []byte, into *[]byte) int {
 	for i := len(bytes) - 1; i >= 0; i-- {
 		*into = append([]byte{bytes[i]}, *into...)
 	}
 	return len(bytes)
 }
 
-func applyRandomPattern(bytesAL *[]byte, startPosition int, length int) {
+func MinimalEncoderResult_randomize253State(codewordPosition int) int {
+	pseudoRandom := ((149 * codewordPosition) % 253) + 1
+	tempVariable := 129 + pseudoRandom
+	if tempVariable <= 254 {
+		return tempVariable
+	}
+	return tempVariable - 254
+}
+
+func MinimalEncoderResult_applyRandomPattern(bytesAL *[]byte, startPosition int, length int) {
 	for i := 0; i < length; i++ {
 		// See "B.1 253-state algorithm
 		padCodewordPosition := startPosition + i
@@ -870,60 +840,38 @@ func applyRandomPattern(bytesAL *[]byte, startPosition int, length int) {
 	}
 }
 
-func (r *result) getBytes() []byte {
+func (r *MinimalEncoderResult) getBytes() []byte {
 	return r.bytes
 }
 
-type input struct {
+type MinimalEncoderInput struct {
 	*common.MinimalECIInput
 	shape   SymbolShapeHint
 	macroId int
 }
 
-func newInput(stringToEncode string, priorityCharset encoding.Encoding, fnc1 int, shape SymbolShapeHint, macroId int) *input {
-	return &input{
-		MinimalECIInput: common.NewMinimalECIInput(stringToEncode, priorityCharset, fnc1),
+func newMinimalEncoderInput(stringToEncode []rune, priorityCharset encoding.Encoding, fnc1 int, shape SymbolShapeHint, macroId int) (*MinimalEncoderInput, error) {
+	in, err := common.NewMinimalECIInput(stringToEncode, priorityCharset, fnc1)
+	if err != nil {
+		return nil, gozxing.WrapWriterException(err)
+	}
+	return &MinimalEncoderInput{
+		MinimalECIInput: in,
 		shape:           shape,
 		macroId:         macroId,
-	}
+	}, nil
 }
 
-func (in *input) length() int {
-	return in.MinimalECIInput.Length()
+func (in *MinimalEncoderInput) CharAt(index int) byte {
+	// no error occurs: the index range and IsECI have been validated.
+	c, _ := in.MinimalECIInput.CharAt(index)
+	return byte(c)
 }
 
-func (in *input) charAt(index int) (rune, error) {
-	return in.MinimalECIInput.CharAt(index)
-}
-
-func (in *input) isECI(index int) (bool, error) {
-	return in.MinimalECIInput.IsECI(index)
-}
-
-func (in *input) isFNC1(index int) (bool, error) {
-	return in.MinimalECIInput.IsFNC1(index)
-}
-
-func (in *input) getECIValue(index int) (int, error) {
-	return in.MinimalECIInput.GetECIValue(index)
-}
-
-func (in *input) haveNCharacters(index, n int) bool {
-	return in.MinimalECIInput.HaveNCharacters(index, n)
-}
-
-func (in *input) getFNC1Character() int {
-	return in.MinimalECIInput.GetFNC1Character()
-}
-
-func (in *input) getMacroId() int {
+func (in *MinimalEncoderInput) getMacroId() int {
 	return in.macroId
 }
 
-func (in *input) getShapeHint() SymbolShapeHint {
+func (in *MinimalEncoderInput) getShapeHint() SymbolShapeHint {
 	return in.shape
-}
-
-func (in *input) String() string {
-	return fmt.Sprintf("Input{length=%d}", in.length())
 }
