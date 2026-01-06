@@ -274,7 +274,7 @@ func newMinimalEncoderEdge(input *MinimalEncoderInput, mode MinimalEncoderMode, 
 		size = previous.cachedTotalSize
 	}
 
-	previousMode := previous.getPreviousMode()
+	previousMode := this.getPreviousMode()
 
 	// Switching modes
 	// ASCII -> C40: latch 230
