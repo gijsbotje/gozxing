@@ -94,7 +94,7 @@ func randomize253State(codewordPosition int) byte {
 // @return the encoded message (the char values range from 0 to 255)
 func HighLevelEncoder_EncodeHighLevel(msg string, shape SymbolShapeHint, minSize, maxSize *gozxing.Dimension, forceC40 bool) ([]byte, error) {
 	//the codewords 0..255 are encoded as Unicode characters
-	c40Encoder := NewC40Encoder()
+	c40Encoder := NewC40Encoder().(*C40Encoder)
 	encoders := []Encoder{
 		NewASCIIEncoder(), c40Encoder, NewTextEncoder(),
 		NewX12Encoder(), NewEdifactEncoder(), NewBase256Encoder(),
@@ -122,14 +122,12 @@ func HighLevelEncoder_EncodeHighLevel(msg string, shape SymbolShapeHint, minSize
 	encodingMode := HighLevelEncoder_ASCII_ENCODATION //Default mode
 
 	if forceC40 {
-		if c40Enc, ok := c40Encoder.(*C40Encoder); ok {
-			e = c40Enc.encodeMaximal(context)
-			if e != nil {
-				return nil, e
-			}
-			encodingMode = context.GetNewEncoding()
-			context.ResetEncoderSignal()
+		e = c40Encoder.encodeMaximal(context)
+		if e != nil {
+			return nil, e
 		}
+		encodingMode = context.GetNewEncoding()
+		context.ResetEncoderSignal()
 	}
 
 	for context.HasMoreCharacters() {
