@@ -7,8 +7,8 @@ import (
 )
 
 // Decoder The main class which implements Data Matrix Code decoding
-//  -- as opposed to locating and extracting the Data Matrix Code from an image.
 //
+//	-- as opposed to locating and extracting the Data Matrix Code from an image.
 type Decoder struct {
 	rsDecoder *reedsolomon.ReedSolomonDecoder
 }
@@ -26,7 +26,6 @@ func NewDecoder() *Decoder {
 // @return text and bytes encoded within the Data Matrix Code
 // @throws FormatException if the Data Matrix Code cannot be decoded
 // @throws ChecksumException if error correction fails
-//
 func (d *Decoder) DecodeBoolMap(image [][]bool) (*common.DecoderResult, error) {
 	bits, e := gozxing.ParseBoolMapToBitMatrix(image)
 	if e != nil {
@@ -42,7 +41,6 @@ func (d *Decoder) DecodeBoolMap(image [][]bool) (*common.DecoderResult, error) {
 // @return text and bytes encoded within the Data Matrix Code
 // @throws FormatException if the Data Matrix Code cannot be decoded
 // @throws ChecksumException if error correction fails
-//
 func (d *Decoder) Decode(bits *gozxing.BitMatrix) (*common.DecoderResult, error) {
 
 	// Construct a parser and read version, error-correction level
